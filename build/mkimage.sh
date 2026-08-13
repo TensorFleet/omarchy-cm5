@@ -254,10 +254,23 @@ install -Dm644 "$overlay/boot/config.txt" "$root/boot/config.txt"
 install -Dm644 "$overlay/boot/cmdline.txt" "$root/boot/cmdline.txt"
 sed -i "s/@ROOT_PARTUUID@/$DISK_ID-02/" "$root/boot/cmdline.txt"
 
-# config.txt assumes the 16K kernel; adapt if we fell back to linux-rpi.
-if [[ $kernel_pkg == linux-rpi ]]; then
-  sed -i 's/^kernel=kernel_2712.img/kernel=kernel8.img/' "$root/boot/config.txt"
-fi
+# Point config.txt at the kernel image the package ACTUALLY installed —
+# ALARM has shipped the Pi 5 kernel as both kernel_2712.img and kernel8.img
+# over time, and a config.txt naming a missing file means no boot.
+kernel_img=""
+for cand in kernel_2712.img kernel8.img; do
+  [[ -f $root/boot/$cand ]] && { kernel_img=$cand; break; }
+done
+[[ -n $kernel_img ]] || { echo "no kernel*.img on the boot partition?!" >&2; exit 1; }
+sed -i "s/^kernel=.*/kernel=$kernel_img/" "$root/boot/config.txt"
+note "boot kernel: $kernel_img"
+
+# omarchy-settings ships x86-flavored mkinitcpio drop-ins that hard-fail the
+# aarch64 build: the btrfs-overlayfs hook (limine snapshot boot; Pi firmware
+# boot has no limine) and a thunderbolt module force-load (no thunderbolt on
+# BCM2712). Neutralize both before generating the initramfs.
+rm -f "$root/etc/mkinitcpio.conf.d/thunderbolt_module.conf"
+sed -i 's/\bbtrfs-overlayfs\b//g' "$root/etc/mkinitcpio.conf.d/omarchy_hooks.conf" 2>/dev/null || true
 
 # Initramfs: not strictly required (ALARM Pi kernels mount ext4 roots
 # directly), but omarchy-settings configures plymouth via mkinitcpio drop-ins,

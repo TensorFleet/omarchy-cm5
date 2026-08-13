@@ -33,6 +33,7 @@ has() { compgen -G "$1" >/dev/null; }
 check hard "MBR partition table with boot+root"   bash -c "sfdisk -d '$IMG' | grep -q 'type=c' && sfdisk -d '$IMG' | grep -q 'type=83'"
 check hard "fixed disk id 0x2ca5b007"             bash -c "sfdisk -d '$IMG' | grep -qi 'label-id: 0x2ca5b007'"
 check hard "Pi 5 kernel image on boot partition"  bash -c "ls '$mnt/boot' | grep -qE '^kernel(_2712|8)\.img$'"
+check hard "config.txt kernel= names a real file"  bash -c "k=\$(sed -n 's/^kernel=//p' '$mnt/boot/config.txt' | head -1); [[ -n \$k && -f $mnt/boot/\$k ]]"
 check hard "config.txt present"                   test -f "$mnt/boot/config.txt"
 check hard "cmdline.txt points at PARTUUID root"  grep -q 'root=PARTUUID=2ca5b007-02' "$mnt/boot/cmdline.txt"
 check hard "device trees present (bcm2712)"       has "$mnt/boot/*2712*.dtb"
@@ -42,7 +43,7 @@ check soft "initramfs referenced in config.txt"   grep -q '^initramfs ' "$mnt/bo
 check hard "kernel modules installed"             has "$mnt/usr/lib/modules/*/kernel"
 
 # Base system
-check hard "fstab has root + boot entries"        bash -c "grep -q ' / ' '$mnt/etc/fstab' && grep -q ' /boot ' '$mnt/etc/fstab'"
+check hard "fstab has root + boot entries"        bash -c "grep -qE '[[:space:]]/[[:space:]]' '$mnt/etc/fstab' && grep -qE '[[:space:]]/boot[[:space:]]' '$mnt/etc/fstab'"
 check hard "aarch64 rootfs (ELF machine)"         bash -c "file -b '$mnt/usr/bin/bash' | grep -q aarch64"
 check hard "systemd present"                      test -e "$mnt/usr/lib/systemd/systemd"
 check hard "NetworkManager enabled"               test -L "$mnt/etc/systemd/system/multi-user.target.wants/NetworkManager.service"
