@@ -230,6 +230,13 @@ else
   note "SKIPPING upstream install stages: /usr/share/omarchy missing"
 fi
 
+# Safety net: enable-services.sh runs under bash -eE, so one missing unit
+# aborts the rest of its chain. These four are boot-critical; enabling twice
+# is idempotent.
+for svc in sddm.service NetworkManager.service systemd-resolved.service systemd-timesyncd.service; do
+  in_chroot systemctl enable "$svc" || note "could not enable $svc"
+done
+
 # --- 6. CM5/Pi overlay -------------------------------------------------------
 install -Dm644 "$overlay/boot/config.txt" "$root/boot/config.txt"
 install -Dm644 "$overlay/boot/cmdline.txt" "$root/boot/cmdline.txt"
