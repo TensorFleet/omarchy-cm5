@@ -43,6 +43,12 @@ fi
 
 run() { arch-chroot "$CHROOT" "$@"; }
 
+# pacman 7's Landlock sandbox / alpm download user both fail under
+# qemu-user emulation — disable them in the chroot.
+if ! grep -q '^DisableSandbox' "$CHROOT/etc/pacman.conf"; then
+  sed -i -e '/^\[options\]/a DisableSandbox' -e '/^DownloadUser/d' "$CHROOT/etc/pacman.conf"
+fi
+
 if ! run id builder &>/dev/null; then
   run pacman-key --init
   run pacman-key --populate archlinuxarm
