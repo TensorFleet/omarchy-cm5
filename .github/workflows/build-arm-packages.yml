@@ -1,0 +1,90 @@
+name: build-arm-packages
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - pkgs/**
+      - .github/workflows/build-arm-packages.yml
+
+permissions:
+  contents: write
+
+# Every job uploads its packages to the rolling `aarch64-pkgs` release; the
+# image build pulls whatever is there at image-build time.
+
+jobs:
+  repack-bin:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - name: Repack upstream aarch64 binaries (Arch container)
+        run: |
+          docker run --rm -v "$PWD:/work" archlinux/archlinux:latest \
+            bash /work/pkgs/repack-bin.sh
+          sudo chown -R "$(id -u):$(id -g)" build/pkgs-out
+      - name: Publish to aarch64-pkgs release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create aarch64-pkgs --title "aarch64 package pool (rolling)" \
+            --notes "Rolling pool of aarch64-built omarchy packages, consumed by build-image." \
+            2>/dev/null || true
+          gh release upload aarch64-pkgs build/pkgs-out/*.pkg.tar.zst --clobber
+
+  small-tools:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install chroot tooling
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            qemu-user-static arch-install-scripts libarchive-tools
+          test -e /proc/sys/fs/binfmt_misc/qemu-aarch64
+      - name: Build Go/Rust/Qt tools in ALARM chroot
+        run: |
+          sudo CHROOT=/mnt/omarchy-pkgbuild OUT="$PWD/build/pkgs-out" \
+            bash pkgs/build-in-chroot.sh cliamp herdr ttfx omacalc omacut omawrite
+          sudo chown -R "$(id -u):$(id -g)" build/pkgs-out
+      - name: Publish to aarch64-pkgs release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create aarch64-pkgs --title "aarch64 package pool (rolling)" \
+            --notes "Rolling pool of aarch64-built omarchy packages, consumed by build-image." \
+            2>/dev/null || true
+          shopt -s nullglob
+          files=(build/pkgs-out/*.pkg.tar.zst)
+          [ ${#files[@]} -gt 0 ] && gh release upload aarch64-pkgs "${files[@]}" --clobber
+          gh release upload aarch64-pkgs build/pkgs-out/CHROOT-BUILT.txt --clobber || true
+
+  quickshell:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install chroot tooling
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            qemu-user-static arch-install-scripts libarchive-tools
+          test -e /proc/sys/fs/binfmt_misc/qemu-aarch64
+      - name: Build quickshell-git in ALARM chroot
+        run: |
+          sudo CHROOT=/mnt/omarchy-quickshell OUT="$PWD/build/pkgs-out" \
+            bash pkgs/build-in-chroot.sh quickshell-git
+          sudo chown -R "$(id -u):$(id -g)" build/pkgs-out
+      - name: Publish to aarch64-pkgs release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create aarch64-pkgs --title "aarch64 package pool (rolling)" \
+            --notes "Rolling pool of aarch64-built omarchy packages, consumed by build-image." \
+            2>/dev/null || true
+          shopt -s nullglob
+          files=(build/pkgs-out/*.pkg.tar.zst)
+          [ ${#files[@]} -gt 0 ] && gh release upload aarch64-pkgs "${files[@]}" --clobber

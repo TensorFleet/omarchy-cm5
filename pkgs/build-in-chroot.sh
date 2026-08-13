@@ -1,0 +1,73 @@
+#!/bin/bash
+# Build compiled omarchy packages for aarch64 in an Arch Linux ARM chroot
+# (qemu-user emulated when the host is x86). Slow but faithful: makepkg -s
+# resolves each PKGBUILD's makedepends against real ALARM packages.
+#
+#   sudo pkgs/build-in-chroot.sh quickshell-git
+#   sudo pkgs/build-in-chroot.sh cliamp herdr ttfx omacalc omacut omawrite
+#
+# Output: build/pkgs-out/*.pkg.tar.zst (+ CHROOT-BUILT.txt)
+set -euo pipefail
+
+here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+OUT=${OUT:-$here/../build/pkgs-out}
+CHROOT=${CHROOT:-/mnt/omarchy-pkgbuild}
+mkdir -p "$OUT"
+
+(($#)) || { echo "usage: build-in-chroot.sh <pkg> [pkg…]" >&2; exit 1; }
+[[ $EUID -eq 0 ]] || { echo "must run as root" >&2; exit 1; }
+if [[ $(uname -m) != aarch64 ]]; then
+  [[ -e /proc/sys/fs/binfmt_misc/qemu-aarch64 ]] ||
+    { echo "install qemu-user-static (binfmt qemu-aarch64)" >&2; exit 1; }
+fi
+
+ALARM_MIRRORS=(
+  http://os.archlinuxarm.org
+  http://fl.us.mirror.archlinuxarm.org
+  http://de3.mirror.archlinuxarm.org
+)
+
+# --- bootstrap chroot (idempotent: reuse if already set up this run) --------
+if [[ ! -x $CHROOT/usr/bin/bash ]]; then
+  mkdir -p "$CHROOT"
+  ok=0
+  for m in "${ALARM_MIRRORS[@]}"; do
+    echo "fetching ALARM rootfs from $m …" >&2
+    if curl -fL --retry 2 "$m/os/ArchLinuxARM-aarch64-latest.tar.gz" | bsdtar -xpf - -C "$CHROOT"; then ok=1; break; fi
+  done
+  ((ok)) || { echo "could not fetch ALARM rootfs" >&2; exit 1; }
+fi
+if [[ $(uname -m) != aarch64 ]] && command -v qemu-aarch64-static >/dev/null; then
+  install -Dm755 "$(command -v qemu-aarch64-static)" "$CHROOT/usr/bin/qemu-aarch64-static"
+fi
+
+run() { arch-chroot "$CHROOT" "$@"; }
+
+if ! run id builder &>/dev/null; then
+  run pacman-key --init
+  run pacman-key --populate archlinuxarm
+  run pacman -Syu --noconfirm
+  run pacman -S --noconfirm --needed base-devel git sudo
+  run useradd -m builder
+  echo 'builder ALL=(ALL) NOPASSWD: ALL' >"$CHROOT/etc/sudoers.d/builder"
+  # makepkg refuses running as root; builds run as builder via chroot su.
+  run sudo -u builder git clone --depth 1 https://github.com/omacom-io/omarchy-pkgs /home/builder/omarchy-pkgs
+fi
+
+# --- build each requested package -------------------------------------------
+touch "$OUT/CHROOT-BUILT.txt"
+for pkg in "$@"; do
+  echo "=== building $pkg (qemu chroot) ===" >&2
+  if [[ ! -d $CHROOT/home/builder/omarchy-pkgs/pkgbuilds/$pkg ]]; then
+    echo "FAILED: $pkg (no PKGBUILD)" >>"$OUT/CHROOT-BUILT.txt"; continue
+  fi
+  if run sudo -u builder bash -c "cd /home/builder/omarchy-pkgs/pkgbuilds/$pkg && makepkg -s -f --noconfirm --skipchecksums --skippgpcheck"; then
+    cp "$CHROOT/home/builder/omarchy-pkgs/pkgbuilds/$pkg"/*.pkg.tar.zst "$OUT/"
+    echo "$pkg" >>"$OUT/CHROOT-BUILT.txt"
+  else
+    echo "FAILED: $pkg" >>"$OUT/CHROOT-BUILT.txt"
+  fi
+done
+
+cat "$OUT/CHROOT-BUILT.txt"
+ls -la "$OUT"

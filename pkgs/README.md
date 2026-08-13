@@ -1,34 +1,29 @@
 # aarch64 package pipeline
 
-The single biggest piece of this port. Upstream serves its custom packages
-from `https://pkgs.omarchy.org/stable/$arch` — x86_64 only. We host a repo
-with the **same path shape** for aarch64 so that upstream's pacman configs,
-channel switching (`omarchy-channel-set`), and `omarchy-update` all work
-without modification — only the `Server =` line differs
-(see `overlay/pacman/pacman-cm5.conf`).
+Upstream serves its custom packages from `https://pkgs.omarchy.org/stable/$arch`
+— x86_64 only (probed every build by `build/resolve-packages.sh`; the day an
+official aarch64 repo appears, the image builder adopts it automatically).
+Until then this directory builds our own pool, published to the rolling
+`aarch64-pkgs` GitHub release and merged into the image's local `[omarchy]`
+repo at image-build time.
 
-## Packages to provide (audited against quattro `82ae514` base list)
+## How each package class is attacked
 
-| Package | Kind | Expected effort |
+| Class | Packages | How |
 |---|---|---|
-| `omarchy` (+ shell/meta pkgs) | bash + QML | `any`-arch repack, trivial |
-| `omarchy-nvim` | config | `any`-arch, trivial |
-| `omacalc`, `omacut`, `omawrite` | app wrappers | trivial |
-| `tobi-try`, `ttfx`, `herdr`, `cliamp`, `tensaku`, `aether` | mixed CLI tools | rebuild; effort depends on language/runtime |
-| `quickshell-git` | Qt6/C++ | real compile; the critical one |
-| `hyprland-guiutils` | C++ | compile |
-| `hyprland-preview-share-picker` | C++ | compile |
-| `ttf-ia-writer`, `woff2-font-awesome` | fonts | `any`-arch — reuse upstream's artifacts as-is |
-| `hyprland` (contingency) | C++ | only if ALARM's build lags what quickshell expects |
+| `arch=('any')` runtime | `omarchy`, `omarchy-settings`, `omarchy-nvim`, `omarchy-keyring`, fonts, `ufw-docker`, `yaru-icon-theme`, `tobi-try`, `tzupdate` | `build/build-any-packages.sh` — built from official PKGBUILDs in an x86 Arch container (file-copy packaging, arch-independent), pinned to `upstream.lock`'s commit |
+| upstream ships aarch64 binaries | `omarchy-chromium-bin` (their patched Chromium!), `aether`, `localsend-bin` | `pkgs/repack-bin.sh` — makepkg repack with CARCH=aarch64, no compilation |
+| compiled, PKGBUILD already declares aarch64 | `quickshell-git` (the bar/shell — the critical one), `cliamp` (Go), `herdr` (Rust), `ttfx` (Rust), `omacalc`/`omacut`/`omawrite` (Qt6/C++) | `pkgs/build-in-chroot.sh` — real `makepkg -s` inside a qemu-emulated ALARM aarch64 chroot |
+| x86-only upstream | `tensaku`, `hyprland-preview-share-picker`, `obsidian`, `pinta`, `asdcontrol`, `gpu-screen-recorder` | skipped via `overlay/install/packages.skip`; revisit individually |
 
-## Build strategy
+Anything unresolved at image-build time is shimmed only if it's a hard
+dependency (see `omarchy-cm5-shims` in `build/build-any-packages.sh`) and
+always listed in the build report.
 
-1. Obtain PKGBUILDs (upstream packaging repo, or reconstruct from the
-   published x86_64 packages' .PKGINFO — TODO: locate upstream's packaging
-   source; the omarchy repo itself does not contain PKGBUILDs).
-2. Build natively on a CM5/Pi5 build box (cleanest), or in a qemu-user
-   aarch64 chroot on x86 CI (slower; fine for the small package count).
-3. `repo-add omarchy.db.tar.zst *.pkg.tar.zst`, publish the directory as
-   `stable/aarch64/` on any static host (GitHub releases works).
+## Running it
 
-`rebuild-aarch64.sh` sketches the loop.
+CI: **Actions → build-arm-packages** (also triggered by pushes touching
+`pkgs/`). Jobs run in parallel; each uploads into the `aarch64-pkgs` release.
+`build-image` picks the pool up on its next run.
+
+Locally: see the headers of `repack-bin.sh` and `build-in-chroot.sh`.

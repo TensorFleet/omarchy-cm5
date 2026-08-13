@@ -187,6 +187,14 @@ mapfile -t requested < <(
     grep -vxFf <(grep -vE '^\s*(#|$)' "$overlay/install/packages.skip")
   grep -vE '^\s*(#|$)' "$overlay/install/packages.add"
 )
+# Prefer omarchy's own patched chromium when its aarch64 build is in the
+# repo (upstream publishes real aarch64 chromium releases).
+if pkg_available omarchy-chromium-bin; then
+  for i in "${!requested[@]}"; do
+    [[ ${requested[$i]} == chromium ]] && requested[$i]=omarchy-chromium-bin
+  done
+fi
+
 available=() missing=()
 for p in "${requested[@]}"; do
   if pkg_available "$p"; then available+=("$p"); else missing+=("$p"); fi
@@ -197,7 +205,11 @@ for p in "${missing[@]}"; do note "  MISSING: $p"; done
 in_chroot pacman -S --noconfirm --ask 4 --needed "${available[@]}"
 
 # omarchy runtime + settings (built as arch=any, or from the aarch64 repo).
-omarchy_core=(omarchy-keyring omarchy-settings omarchy-nvim omarchy)
+omarchy_core=()
+# Install the real quickshell build ahead of omarchy when the pool has it,
+# so the dependency resolves to it deterministically (not a shim).
+pkg_available quickshell-git && omarchy_core+=(quickshell-git)
+omarchy_core+=(omarchy-keyring omarchy-settings omarchy-nvim omarchy)
 core_missing=0
 for p in "${omarchy_core[@]}"; do
   pkg_available "$p" || { note "  MISSING CORE: $p"; core_missing=1; }
