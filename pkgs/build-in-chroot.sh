@@ -69,13 +69,26 @@ if ! run id builder &>/dev/null; then
 fi
 
 # --- build each requested package -------------------------------------------
+# makepkg -s escalates via sudo, whose setuid bit does not work under
+# qemu-user emulation ("sudo: effective uid is not 0"). Instead: read the
+# PKGBUILD's dependency lists via --printsrcinfo, install them as root
+# (root pacman needs no setuid), then build with makepkg -d.
 touch "$OUT/CHROOT-BUILT.txt"
 for pkg in "$@"; do
   echo "=== building $pkg (qemu chroot) ===" >&2
   if [[ ! -d $CHROOT/home/builder/omarchy-pkgs/pkgbuilds/$pkg ]]; then
     echo "FAILED: $pkg (no PKGBUILD)" >>"$OUT/CHROOT-BUILT.txt"; continue
   fi
-  if run sudo -u builder bash -c "cd /home/builder/omarchy-pkgs/pkgbuilds/$pkg && makepkg -s -f --noconfirm --skipchecksums --skippgpcheck"; then
+  mapfile -t deps < <(
+    run sudo -u builder bash -c "cd /home/builder/omarchy-pkgs/pkgbuilds/$pkg && makepkg --printsrcinfo 2>/dev/null" |
+      awk -F' = ' '$1 ~ /^\t(make|check)?depends(_aarch64)?$/ { sub(/[<>=].*/, "", $2); print $2 }' | sort -u
+  )
+  if ((${#deps[@]})); then
+    echo "deps: ${deps[*]}" >&2
+    run pacman -S --noconfirm --needed --ask 4 "${deps[@]}" ||
+      { echo "FAILED: $pkg (deps)" >>"$OUT/CHROOT-BUILT.txt"; continue; }
+  fi
+  if run sudo -u builder bash -c "cd /home/builder/omarchy-pkgs/pkgbuilds/$pkg && makepkg -d -f --noconfirm --skipchecksums --skippgpcheck"; then
     cp "$CHROOT/home/builder/omarchy-pkgs/pkgbuilds/$pkg"/*.pkg.tar.zst "$OUT/"
     echo "$pkg" >>"$OUT/CHROOT-BUILT.txt"
   else
