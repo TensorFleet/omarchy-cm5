@@ -41,6 +41,14 @@ if [[ $(uname -m) != aarch64 ]] && command -v qemu-aarch64-static >/dev/null; th
   install -Dm755 "$(command -v qemu-aarch64-static)" "$CHROOT/usr/bin/qemu-aarch64-static"
 fi
 
+# A plain-directory chroot is not a mountpoint, which breaks pacman's
+# CheckSpace ("could not determine cachedir mount point"). Bind-mount the
+# chroot onto itself and drop CheckSpace for belt and braces.
+if ! mountpoint -q "$CHROOT"; then
+  mount --bind "$CHROOT" "$CHROOT"
+fi
+sed -i 's/^CheckSpace/#CheckSpace/' "$CHROOT/etc/pacman.conf"
+
 run() { arch-chroot "$CHROOT" "$@"; }
 
 # pacman 7's Landlock sandbox / alpm download user both fail under
