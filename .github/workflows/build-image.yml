@@ -1,0 +1,152 @@
+name: build-image
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - build/**
+      - overlay/**
+      - upstream.lock
+      - .github/workflows/build-image.yml
+
+concurrency:
+  group: build-image
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+jobs:
+  image:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Free runner disk space
+        run: |
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /opt/ghc \
+            /usr/local/.ghcup /usr/local/share/boost /opt/hostedtoolcache/CodeQL
+          df -h / /mnt
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            qemu-user-static arch-install-scripts libarchive-tools \
+            dosfstools parted file
+          # qemu-user-static registers the aarch64 binfmt handler (F flag)
+          test -e /proc/sys/fs/binfmt_misc/qemu-aarch64
+          grep -q flags:.*F /proc/sys/fs/binfmt_misc/qemu-aarch64
+
+      - name: Fetch pinned upstream omarchy
+        run: bash build/fetch-upstream.sh
+
+      - name: Resolve aarch64 package availability
+        run: bash build/resolve-packages.sh
+
+      - name: Build omarchy 'any' packages (Arch container)
+        run: |
+          docker run --rm -v "$PWD:/work" archlinux/archlinux:latest \
+            bash /work/build/build-any-packages.sh
+          sudo chown -R "$(id -u):$(id -g)" build/pkgs-out
+          ls -la build/pkgs-out
+
+      - name: Download Node.js arm64 tarball (offline first-boot setup)
+        run: |
+          mkdir -p build/node
+          file=$(curl -fsSL https://nodejs.org/dist/latest-v22.x/ |
+            grep -o 'node-v[0-9.]*-linux-arm64\.tar\.gz' | head -1)
+          curl -fL --retry 3 -o "build/node/$file" "https://nodejs.org/dist/latest-v22.x/$file"
+          ls -la build/node
+
+      - name: Build image
+        run: |
+          sudo mkdir -p /mnt/omarchy-build/cache
+          OMARCHY_REPO_URL=$(cat build/resolved/omarchy-repo.txt || true)
+          sudo env \
+            IMG=/mnt/omarchy-build/omarchy-cm5.img \
+            IMG_SIZE=12G \
+            CACHE_DIR=/mnt/omarchy-build/cache \
+            LOCAL_PKG_DIR="$PWD/build/pkgs-out" \
+            OMARCHY_REPO_URL="$OMARCHY_REPO_URL" \
+            NODE_TARBALL_PATH="$(ls "$PWD"/build/node/node-v*-linux-arm64.tar.gz | head -1)" \
+            bash build/mkimage.sh
+
+      - name: Verify image
+        run: sudo bash build/verify-image.sh /mnt/omarchy-build/omarchy-cm5.img
+
+      - name: Compress and checksum
+        run: |
+          cd /mnt/omarchy-build
+          sudo rm -rf cache
+          sudo xz -T0 -6 -v omarchy-cm5.img
+          sudo split -b 1900M -d omarchy-cm5.img.xz omarchy-cm5.img.xz.part
+          # keep the unsplit file only if it fit in one part
+          if [ "$(ls omarchy-cm5.img.xz.part* | wc -l)" -eq 1 ]; then
+            sudo mv omarchy-cm5.img.xz.part00 omarchy-cm5.img.xz
+          else
+            sudo rm omarchy-cm5.img.xz
+          fi
+          sudo sh -c 'sha256sum omarchy-cm5.img.xz* omarchy-cm5.img.report.txt omarchy-cm5.VERIFICATION.txt > SHA256SUMS'
+          ls -la
+
+      - name: Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tag="build-${{ github.run_number }}"
+          {
+            echo "Omarchy Quattro for Raspberry Pi 5 / CM5 — flashable USB/SD/eMMC image."
+            echo
+            echo '## Flashing'
+            echo 'If a single `omarchy-cm5.img.xz` is attached, flash it directly with'
+            echo 'Raspberry Pi Imager or balenaEtcher, or:'
+            echo '```'
+            echo 'xz -dc omarchy-cm5.img.xz | sudo dd of=/dev/sdX bs=4M status=progress conv=fsync'
+            echo '```'
+            echo 'If split into `*.partNN` files, reassemble first:'
+            echo '```'
+            echo 'cat omarchy-cm5.img.xz.part* > omarchy-cm5.img.xz'
+            echo '```'
+            echo
+            echo 'First boot asks for username/password on the console (the same'
+            echo 'first-boot setup the official ISO uses), then hands off to SDDM.'
+            echo 'The root partition grows to fill the drive automatically.'
+            echo
+            echo '## Build report'
+            echo '```'
+            cat /mnt/omarchy-build/omarchy-cm5.img.report.txt
+            echo '```'
+            echo '## Verification'
+            echo '```'
+            cat /mnt/omarchy-build/omarchy-cm5.VERIFICATION.txt
+            echo '```'
+            if [ -s build/pkgs-out/SHIMMED.txt ]; then
+              echo '## Shimmed dependencies (no aarch64 package yet)'
+              echo '```'
+              cat build/pkgs-out/SHIMMED.txt
+              echo '```'
+            fi
+          } > notes.md
+          gh release create "$tag" \
+            --title "omarchy-cm5 $tag ($(date -u +%F))" \
+            --notes-file notes.md \
+            /mnt/omarchy-build/omarchy-cm5.img.xz* \
+            /mnt/omarchy-build/SHA256SUMS \
+            /mnt/omarchy-build/omarchy-cm5.img.report.txt \
+            /mnt/omarchy-build/omarchy-cm5.VERIFICATION.txt
+
+      - name: Upload build report (debug artifact)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-report
+          path: |
+            /mnt/omarchy-build/omarchy-cm5.img.report.txt
+            /mnt/omarchy-build/omarchy-cm5.VERIFICATION.txt
+            build/pkgs-out/BUILT.txt
+            build/pkgs-out/SHIMMED.txt
+            build/resolved/omarchy-repo.txt
+          if-no-files-found: ignore

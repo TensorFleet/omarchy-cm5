@@ -16,3 +16,10 @@ qemu-user-static-binfmt
 kdenlive
 libreoffice-fresh
 obs-studio
+
+# x86_64-only in omarchy-pkgs (arch= does not include aarch64)
+tensaku
+hyprland-preview-share-picker
+
+# x86-centric encoder pipeline (NVENC/VAAPI); no v3d support
+gpu-screen-recorder
