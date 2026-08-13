@@ -8,3 +8,9 @@ vulkan-broadcom
 
 # libcamera stack for CSI cameras on the carrier
 libcamera
+
+# The x86 ISO installs these via archinstall/early-bootstrap (base-devel,
+# sudo for the wheel user, makepkg for yay/AUR flows); our builder must add
+# them explicitly — omarchy-base.packages assumes they're already present.
+sudo
+base-devel
