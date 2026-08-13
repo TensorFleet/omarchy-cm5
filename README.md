@@ -4,7 +4,8 @@ Omarchy 4 ("Quattro") on the Raspberry Pi Compute Module 5 — a mini distro
 built as an **overlay** on upstream [basecamp/omarchy](https://github.com/basecamp/omarchy),
 modifying as close to zero lines of the original code as possible.
 
-> **Status:** feasibility scaffold. Nothing here has booted on hardware yet.
+> **Status:** image pipeline runs end-to-end in CI (build → verify → release).
+> Not yet validated on physical hardware.
 > Read [`docs/feasibility.md`](docs/feasibility.md) for the full difficulty
 > assessment — the short version is below.
 
@@ -42,6 +43,41 @@ overlay/             # everything we add on top of upstream — no edits
 pkgs/                # aarch64 rebuild pipeline for Omarchy's custom packages
 patches/             # ideally stays empty — see its README
 docs/feasibility.md  # the full difficulty analysis with sources
+```
+
+
+## Building & flashing
+
+The image is built by CI: **Actions → build-image** (runs on every push that
+touches `build/`, `overlay/`, or `upstream.lock`, or via *Run workflow*).
+A successful run publishes a GitHub release with:
+
+- `omarchy-cm5.img.xz` — the flashable image (or `…xz.partNN` pieces when it
+  exceeds the 2 GiB release-asset limit: `cat *.part* > omarchy-cm5.img.xz`)
+- `SHA256SUMS`, the package-resolution build report, and the image
+  verification report
+
+Flash it to a USB stick (≥16 GB) with Raspberry Pi Imager / balenaEtcher
+(both read `.img.xz` directly), or:
+
+```
+xz -dc omarchy-cm5.img.xz | sudo dd of=/dev/sdX bs=4M status=progress conv=fsync
+```
+
+Boot the Pi 5 from the stick. First boot runs the same deferred-provisioning
+setup the official ISO arms — username, password, hostname, timezone on
+tty1 — then hands off to SDDM. The root partition auto-grows to fill the
+stick on first boot.
+
+To build locally instead (needs root, loop devices, and qemu-user binfmt on
+x86):
+
+```
+build/fetch-upstream.sh
+build/resolve-packages.sh
+docker run --rm -v "$PWD:/work" archlinux/archlinux:latest bash /work/build/build-any-packages.sh
+sudo LOCAL_PKG_DIR=$PWD/build/pkgs-out build/mkimage.sh
+sudo build/verify-image.sh build/omarchy-cm5.img
 ```
 
 ## Base system choice
