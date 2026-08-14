@@ -89,7 +89,7 @@ for pkg in "$@"; do
       { echo "FAILED: $pkg (deps)" >>"$OUT/CHROOT-BUILT.txt"; continue; }
   fi
   if run sudo -u builder bash -c "cd /home/builder/omarchy-pkgs/pkgbuilds/$pkg && makepkg -d -f --noconfirm --skipchecksums --skippgpcheck"; then
-    cp "$CHROOT/home/builder/omarchy-pkgs/pkgbuilds/$pkg"/*.pkg.tar.zst "$OUT/"
+    cp "$CHROOT/home/builder/omarchy-pkgs/pkgbuilds/$pkg"/*.pkg.tar.* "$OUT/" || { echo "FAILED: $pkg (harvest)" >>"$OUT/CHROOT-BUILT.txt"; continue; }
     echo "$pkg" >>"$OUT/CHROOT-BUILT.txt"
   else
     echo "FAILED: $pkg" >>"$OUT/CHROOT-BUILT.txt"

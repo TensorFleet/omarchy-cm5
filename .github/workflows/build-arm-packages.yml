@@ -32,7 +32,7 @@ jobs:
           gh release create aarch64-pkgs --title "aarch64 package pool (rolling)" \
             --notes "Rolling pool of aarch64-built omarchy packages, consumed by build-image." \
             2>/dev/null || true
-          gh release upload aarch64-pkgs build/pkgs-out/*.pkg.tar.zst --clobber
+          gh release upload aarch64-pkgs build/pkgs-out/*.pkg.tar.* --clobber
 
   small-tools:
     runs-on: ubuntu-latest
@@ -63,7 +63,7 @@ jobs:
             --notes "Rolling pool of aarch64-built omarchy packages, consumed by build-image." \
             2>/dev/null || true
           shopt -s nullglob
-          files=(build/pkgs-out/*.pkg.tar.zst)
+          files=(build/pkgs-out/*.pkg.tar.*)
           [ ${#files[@]} -gt 0 ] && gh release upload aarch64-pkgs "${files[@]}" --clobber
           gh release upload aarch64-pkgs build/pkgs-out/CHROOT-BUILT.txt --clobber || true
 
@@ -96,5 +96,5 @@ jobs:
             --notes "Rolling pool of aarch64-built omarchy packages, consumed by build-image." \
             2>/dev/null || true
           shopt -s nullglob
-          files=(build/pkgs-out/*.pkg.tar.zst)
+          files=(build/pkgs-out/*.pkg.tar.*)
           [ ${#files[@]} -gt 0 ] && gh release upload aarch64-pkgs "${files[@]}" --clobber
