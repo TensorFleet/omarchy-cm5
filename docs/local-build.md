@@ -208,6 +208,8 @@ code exists — and which problems vanish on a native aarch64 builder (†):
 | Pi boots to plymouth splash, Esc shows `Timed out waiting for /dev/loopXp1` → `Dependency failed for /boot` / failed swap | `genfstab -U` inside a build container has no blkid data — it writes the build host's loop device paths and copies the host's active swap into the image fstab | `mkimage.sh` writes fstab by hand from the deterministic PARTUUIDs; `verify-image.sh` hard-fails on `/dev/loop` or swap in fstab |
 | `ERROR: Failed to open encryption mapping … not a LUKS volume` at boot | omarchy-settings' mkinitcpio drop-ins include the `encrypt` hook (upstream root is LUKS; ours is plain ext4) | non-fatal, but `mkimage.sh` seds the encrypt hooks out before initramfs generation |
 | First boot detours through emergency mode ("root account is locked … Press Enter to continue"), then provisioning runs normally; later boots clean | grow-root ran `Before=sysinit.target` and rewrote the partition table (sfdisk + `partx -u`) while /boot was still being fsck'd/mounted | grow-root is now an ordinary `After=local-fs.target` service; online resize2fs doesn't need to run early |
+| Plymouth splash renders as a white field with scattered pixel clusters until KMS takes over | Pi firmware hands the kernel a 16-bit RGB565 simplefb (`format=r5g6b5` in dmesg); plymouth mis-renders its dark theme into it during the ~1s before vc4 binds | `framebuffer_depth=32` in overlay config.txt |
+| First-login updater: `error: target not found: voxtype-bin` | upstream added voxtype to the base set; voxtype only publishes x86_64 binaries — no arm64 release exists to repack | expected, harmless; revisit if voxtype ships arm64 |
 
 ## CI equivalents
 

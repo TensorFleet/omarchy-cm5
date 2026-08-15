@@ -8,6 +8,9 @@ arm_64bit=1
 # Full KMS — required for Hyprland/wlroots-style compositors on v3d.
 dtoverlay=vc4-kms-v3d-pi5
 max_framebuffers=2
+# 32bpp firmware framebuffer: the default 16-bit RGB565 simplefb makes
+# plymouth render the splash as white garbage until vc4 KMS binds (~1s in).
+framebuffer_depth=32
 disable_overscan=1
 
 # PCIe (NVMe on the carrier). Gen 3 is the usual CM5 carrier choice.
