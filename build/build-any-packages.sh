@@ -12,8 +12,8 @@
 # Builds:
 #   1. omarchy-keyring, omarchy-settings, omarchy, omarchy-nvim  (the runtime)
 #   2. base-list arch=('any') packages ALARM doesn't carry
-#      (fonts, ufw-docker, yaru-icon-theme, …) + tzupdate (pure python,
-#      declared x86_64 upstream only by omission)
+#      (fonts, ufw-docker, yaru-icon-theme, …); tzupdate is Rust now and
+#      builds in the aarch64 chroot instead (pkgs/build-in-chroot.sh)
 #   3. omarchy-cm5-shims: an empty provider for runtime dependencies that
 #      don't exist on aarch64 and don't apply to Pi-firmware boot (limine and
 #      friends), so pacman's dependency graph stays honest without them.
@@ -32,9 +32,10 @@ mkdir -p "$OUT"
 source "$WORK/upstream.lock"
 
 # imagemagick: omarchy-settings icon generation; neovim/nodejs/npm/
-# tree-sitter-cli: omarchy-nvim vendors LazyVim plugins at build time.
+# tree-sitter-cli: omarchy-nvim vendors LazyVim plugins at build time;
+# meson/sassc: yaru-icon-theme; scdoc: xdg-terminal-exec man page.
 pacman -Syu --noconfirm --needed base-devel git imagemagick sudo \
-  neovim nodejs npm tree-sitter-cli >/dev/null
+  neovim nodejs npm tree-sitter-cli meson sassc scdoc >/dev/null
 useradd -m builder 2>/dev/null || true
 echo 'builder ALL=(ALL) NOPASSWD: ALL' >/etc/sudoers.d/builder
 
@@ -76,10 +77,9 @@ for pkg in ttf-ia-writer ttf-jetbrains-mono-nerd-basic ufw-docker yaru-icon-them
     build_one "$pkg" || echo "FAILED: $pkg" >>"$OUT/BUILT.txt"
   fi
 done
-# tzupdate is pure python; upstream PKGBUILD just never claimed 'any'.
-if ! alarm_has tzupdate; then
-  build_one tzupdate "sed -i \"s/^arch=.*/arch=('any')/\" PKGBUILD" || echo "FAILED: tzupdate" >>"$OUT/BUILT.txt"
-fi
+# tzupdate is NOT built here anymore: omarchy-pkgs rewrote it in Rust, so an
+# x86 container would bake an x86 binary into an 'any' package. It builds in
+# the aarch64 chroot instead (pkgs/build-in-chroot.sh tzupdate).
 
 # 3. Shims: hard deps of the built packages that exist neither on ALARM nor
 # among what we built. On a Pi the limine bootloader stack is structurally

@@ -1,2 +1,9 @@
 build/upstream/
 pkgs/repo/
+build/node/
+build/pkgs-out/
+build/resolved/
+build/cache/
+build/*.img
+build/*.img.report.txt
+build/*.VERIFICATION.txt

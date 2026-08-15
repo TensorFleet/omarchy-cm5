@@ -85,10 +85,19 @@ for pkg in "$@"; do
   )
   if ((${#deps[@]})); then
     echo "deps: ${deps[*]}" >&2
-    run pacman -S --noconfirm --needed --ask 4 "${deps[@]}" ||
-      { echo "FAILED: $pkg (deps)" >>"$OUT/CHROOT-BUILT.txt"; continue; }
+    # Bulk install first; on failure fall back to per-dep so one name ALARM
+    # lacks (e.g. yaru's gtk-engine-murrine) doesn't sink the whole build —
+    # makepkg -d skips dep checks, so a truly-needed miss fails the build itself.
+    if ! run pacman -S --noconfirm --needed --ask 4 "${deps[@]}"; then
+      for d in "${deps[@]}"; do
+        run pacman -S --noconfirm --needed --ask 4 "$d" ||
+          echo "  dep unavailable on ALARM, continuing: $d" >&2
+      done
+    fi
   fi
-  if run sudo -u builder bash -c "cd /home/builder/omarchy-pkgs/pkgbuilds/$pkg && makepkg -d -f --noconfirm --skipchecksums --skippgpcheck"; then
+  # -A: some PKGBUILDs declare arch=('x86_64') only by omission (tzupdate);
+  # makepkg still stamps the built package with the real CARCH (aarch64).
+  if run sudo -u builder bash -c "cd /home/builder/omarchy-pkgs/pkgbuilds/$pkg && makepkg -d -f -A --noconfirm --skipchecksums --skippgpcheck"; then
     cp "$CHROOT/home/builder/omarchy-pkgs/pkgbuilds/$pkg"/*.pkg.tar.* "$OUT/" || { echo "FAILED: $pkg (harvest)" >>"$OUT/CHROOT-BUILT.txt"; continue; }
     echo "$pkg" >>"$OUT/CHROOT-BUILT.txt"
   else

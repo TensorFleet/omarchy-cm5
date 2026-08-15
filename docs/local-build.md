@@ -39,6 +39,41 @@ Docker (or podman with an alias) is needed only for stage 1 and
 `repack-bin.sh`; on an Arch host you can skip the container and run those
 scripts directly.
 
+**Also works: macOS on Apple Silicon via Docker Desktop.** The Docker VM is
+a native aarch64 Linux, so this is secretly the best-case host with a
+container wrapped around every stage (verified end-to-end 2026-08):
+
+```bash
+# stages 1 + 2a: the x86 archlinux container, emulated. pacman 7's seccomp
+# sandbox fails under emulation exactly like under qemu-user — disable it:
+docker run --rm --platform linux/amd64 -v "$PWD:/work" archlinux/archlinux:latest \
+  bash -c "sed -i -e '/^\[options\]/a DisableSandbox' -e '/^DownloadUser/d' /etc/pacman.conf \
+           && bash /work/build/build-any-packages.sh"   # same for pkgs/repack-bin.sh
+
+# stages 2b + 3: a native arm64 container with the chroot/loop tooling.
+# Chroot and image live in named volumes (the macOS bind mount breaks
+# xattrs and loop performance); --privileged -v /dev:/dev makes losetup
+# partition nodes appear (the VM's devtmpfs is shared in).
+docker build -t omarchy-builder - <<'EOF'
+FROM ubuntu:24.04
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y \
+    arch-install-scripts libarchive-tools dosfstools parted file curl \
+    util-linux fdisk e2fsprogs git xz-utils zstd && rm -rf /var/lib/apt/lists/*
+EOF
+docker run --rm --privileged -v /dev:/dev -v omarchy-chroot:/mnt/omarchy-pkgbuild \
+  -v "$PWD:/work" omarchy-builder bash /work/pkgs/build-in-chroot.sh quickshell-git
+docker run --rm --privileged -v /dev:/dev -v omarchy-image:/img -v "$PWD:/work" \
+  omarchy-builder env IMG=/img/omarchy-cm5.img CACHE_DIR=/img/cache \
+    LOCAL_PKG_DIR=/work/build/pkgs-out \
+    NODE_TARBALL_PATH=/work/build/node/node-v22.23.2-linux-arm64.tar.gz \
+    bash /work/build/mkimage.sh
+```
+
+One trap: heavy emulated builds (meson/ninja under `qemu-x86_64`) can hang
+with zombie children. Anything `arch=('any')` that has a real build step
+(yaru-icon-theme's icon rendering) is better built in the native aarch64
+chroot on this host — the output is identical.
+
 Disk: ~25 GB free. The image itself is 12 GB sparse plus a ~6 GB package
 cache (kept outside the image; set `CACHE_DIR` to control where).
 
@@ -90,7 +125,7 @@ docker run --rm -v "$PWD:/work" archlinux/archlinux:latest \
 
 ```bash
 sudo pkgs/build-in-chroot.sh quickshell-git                       # the big one
-sudo pkgs/build-in-chroot.sh cliamp herdr ttfx omacalc omacut omawrite
+sudo pkgs/build-in-chroot.sh cliamp herdr ttfx omacalc omacut omawrite tzupdate yay
 ```
 
 Bootstraps a throwaway Arch Linux ARM chroot (`CHROOT=/mnt/omarchy-pkgbuild`
@@ -98,11 +133,13 @@ by default, reused across invocations) and runs `makepkg` per package.
 Observed timings: quickshell-git ≈ **2 h 40 m** on a 4-core x86 runner under
 qemu; expect ≈ 15–25 min native on a Pi 5. The small tools are minutes each.
 
-Worthwhile additions once you have a fast local builder — these were missing
-from ALARM at image time and are currently just absent from the image:
-`mise`, `yay` (both have aarch64-ready PKGBUILDs in omarchy-pkgs), and
-upstream's `nvim`/`tzupdate`/`localsend` name-mapping (the image gets real
-`neovim` via a dependency, but the `nvim` wrapper package itself is theirs).
+`tzupdate` moved here from stage 1: omarchy-pkgs rewrote it in Rust, so it
+needs a real aarch64 compile (its PKGBUILD says `arch=('x86_64')` only by
+omission; the script builds with `makepkg -A` and stamps aarch64). `yay` is
+a nice-to-have AUR helper on-device. Formerly-suggested `mise` and the
+`nvim` wrapper no longer exist in omarchy-pkgs; `localsend` gained a source
+PKGBUILD upstream, but it's a heavy Flutter build — the `localsend-bin`
+repack covers it.
 
 ## Stage 3 — the image
 
@@ -163,6 +200,11 @@ code exists — and which problems vanish on a native aarch64 builder (†):
 | `mkinitcpio` errors: `btrfs-overlayfs` hook / `thunderbolt` module not found | omarchy-settings ships x86/limine-flavored drop-ins | removed/neutralized before initramfs generation |
 | `snapper.sh` and `firewall.sh` stage failures in the log | snapper needs btrfs (image is ext4); ufw can't probe iptables in chroot | tolerated by design; verify-image checks what actually matters. `sudo ufw enable` once on the Pi if you want the firewall |
 | Chromium missing | base list says `chromium`; ALARM's build lags | image substitutes `omarchy-chromium-bin` (upstream's patched build, real aarch64) when present in the pool |
+| † `error restricting syscalls via seccomp: 22` from pacman in a Docker x86 container on Apple Silicon | pacman 7's own seccomp sandbox fails under Rosetta/qemu-x86_64, same family as the Landlock failure | sed `DisableSandbox` into the container's pacman.conf before running the stage scripts (see macOS section) |
+| † Emulated x86 container build hangs forever, zombie `meson` under `ninja` | qemu-x86_64 user emulation loses track of children on heavy parallel builds | build `any` packages that have real build steps in the native aarch64 chroot instead |
+| `missing tool: sfdisk` on a Debian/Ubuntu builder | Ubuntu splits sfdisk out of util-linux | `apt install fdisk` |
+| `ERROR: <pkg> is not available for the 'aarch64' architecture` | PKGBUILD declares `arch=('x86_64')` only by omission (tzupdate) | `build-in-chroot.sh` builds with `makepkg -A`; package is stamped with the real CARCH |
+| One missing dep name aborts a whole chroot build (`target not found: gtk-engine-murrine`) | bulk `pacman -S` is all-or-nothing; some makedepends don't exist on ALARM | `build-in-chroot.sh` falls back to per-dep install and lets `makepkg -d` decide what's truly fatal |
 
 ## CI equivalents
 
