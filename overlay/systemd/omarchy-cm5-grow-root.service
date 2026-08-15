@@ -1,10 +1,12 @@
 [Unit]
 Description=Grow root partition to fill the boot medium (first boot)
 ConditionPathExists=!/var/lib/omarchy-cm5/root-grown
-DefaultDependencies=no
-After=systemd-remount-fs.service
-Before=systemd-sysusers.service sysinit.target
-Conflicts=shutdown.target
+# Runs as a normal service AFTER local-fs.target: rewriting the partition
+# table (sfdisk + partx -u) while systemd is still fsck'ing/mounting /boot
+# makes the partition devices churn mid-mount and drops first boot into
+# emergency mode. Nothing needs the grown filesystem this early — online
+# resize2fs is fine on the mounted root at any point.
+After=local-fs.target
 
 [Service]
 Type=oneshot

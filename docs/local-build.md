@@ -207,6 +207,7 @@ code exists — and which problems vanish on a native aarch64 builder (†):
 | One missing dep name aborts a whole chroot build (`target not found: gtk-engine-murrine`) | bulk `pacman -S` is all-or-nothing; some makedepends don't exist on ALARM | `build-in-chroot.sh` falls back to per-dep install and lets `makepkg -d` decide what's truly fatal |
 | Pi boots to plymouth splash, Esc shows `Timed out waiting for /dev/loopXp1` → `Dependency failed for /boot` / failed swap | `genfstab -U` inside a build container has no blkid data — it writes the build host's loop device paths and copies the host's active swap into the image fstab | `mkimage.sh` writes fstab by hand from the deterministic PARTUUIDs; `verify-image.sh` hard-fails on `/dev/loop` or swap in fstab |
 | `ERROR: Failed to open encryption mapping … not a LUKS volume` at boot | omarchy-settings' mkinitcpio drop-ins include the `encrypt` hook (upstream root is LUKS; ours is plain ext4) | non-fatal, but `mkimage.sh` seds the encrypt hooks out before initramfs generation |
+| First boot detours through emergency mode ("root account is locked … Press Enter to continue"), then provisioning runs normally; later boots clean | grow-root ran `Before=sysinit.target` and rewrote the partition table (sfdisk + `partx -u`) while /boot was still being fsck'd/mounted | grow-root is now an ordinary `After=local-fs.target` service; online resize2fs doesn't need to run early |
 
 ## CI equivalents
 
