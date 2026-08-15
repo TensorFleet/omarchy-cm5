@@ -199,12 +199,14 @@ code exists — and which problems vanish on a native aarch64 builder (†):
 | Image builds but Pi shows rainbow/no boot | ALARM has shipped the Pi 5 kernel as `kernel_2712.img` *or* `kernel8.img` at different times; a stale `kernel=` line in config.txt = no boot | `mkimage.sh` points `kernel=` at the file actually installed; `verify-image.sh` asserts it exists |
 | `mkinitcpio` errors: `btrfs-overlayfs` hook / `thunderbolt` module not found | omarchy-settings ships x86/limine-flavored drop-ins | removed/neutralized before initramfs generation |
 | `snapper.sh` and `firewall.sh` stage failures in the log | snapper needs btrfs (image is ext4); ufw can't probe iptables in chroot | tolerated by design; verify-image checks what actually matters. `sudo ufw enable` once on the Pi if you want the firewall |
-| Chromium missing | base list says `chromium`; ALARM's build lags | image substitutes `omarchy-chromium-bin` (upstream's patched build, real aarch64) when present in the pool |
+| Chromium/LocalSend missing | base list says `chromium`/`localsend`; neither name exists on ALARM | image substitutes `omarchy-chromium-bin` / `localsend-bin` (real aarch64 upstream builds, repacked by `pkgs/repack-bin.sh`) when present in the pool |
 | † `error restricting syscalls via seccomp: 22` from pacman in a Docker x86 container on Apple Silicon | pacman 7's own seccomp sandbox fails under Rosetta/qemu-x86_64, same family as the Landlock failure | sed `DisableSandbox` into the container's pacman.conf before running the stage scripts (see macOS section) |
 | † Emulated x86 container build hangs forever, zombie `meson` under `ninja` | qemu-x86_64 user emulation loses track of children on heavy parallel builds | build `any` packages that have real build steps in the native aarch64 chroot instead |
 | `missing tool: sfdisk` on a Debian/Ubuntu builder | Ubuntu splits sfdisk out of util-linux | `apt install fdisk` |
 | `ERROR: <pkg> is not available for the 'aarch64' architecture` | PKGBUILD declares `arch=('x86_64')` only by omission (tzupdate) | `build-in-chroot.sh` builds with `makepkg -A`; package is stamped with the real CARCH |
 | One missing dep name aborts a whole chroot build (`target not found: gtk-engine-murrine`) | bulk `pacman -S` is all-or-nothing; some makedepends don't exist on ALARM | `build-in-chroot.sh` falls back to per-dep install and lets `makepkg -d` decide what's truly fatal |
+| Pi boots to plymouth splash, Esc shows `Timed out waiting for /dev/loopXp1` → `Dependency failed for /boot` / failed swap | `genfstab -U` inside a build container has no blkid data — it writes the build host's loop device paths and copies the host's active swap into the image fstab | `mkimage.sh` writes fstab by hand from the deterministic PARTUUIDs; `verify-image.sh` hard-fails on `/dev/loop` or swap in fstab |
+| `ERROR: Failed to open encryption mapping … not a LUKS volume` at boot | omarchy-settings' mkinitcpio drop-ins include the `encrypt` hook (upstream root is LUKS; ours is plain ext4) | non-fatal, but `mkimage.sh` seds the encrypt hooks out before initramfs generation |
 
 ## CI equivalents
 

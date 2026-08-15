@@ -51,7 +51,7 @@ ALARM_TARBALL=${ALARM_TARBALL:-}
 
 [[ -d $upstream ]] || { echo "run build/fetch-upstream.sh first" >&2; exit 1; }
 [[ $EUID -eq 0 ]] || { echo "must run as root (losetup/mount/chroot)" >&2; exit 1; }
-for tool in sfdisk losetup mkfs.vfat mkfs.ext4 bsdtar arch-chroot genfstab curl; do
+for tool in sfdisk losetup mkfs.vfat mkfs.ext4 bsdtar arch-chroot curl; do
   command -v "$tool" >/dev/null || { echo "missing tool: $tool" >&2; exit 1; }
 done
 
@@ -187,13 +187,17 @@ mapfile -t requested < <(
     grep -vxFf <(grep -vE '^\s*(#|$)' "$overlay/install/packages.skip")
   grep -vE '^\s*(#|$)' "$overlay/install/packages.add"
 )
-# Prefer omarchy's own patched chromium when its aarch64 build is in the
-# repo (upstream publishes real aarch64 chromium releases).
-if pkg_available omarchy-chromium-bin; then
-  for i in "${!requested[@]}"; do
-    [[ ${requested[$i]} == chromium ]] && requested[$i]=omarchy-chromium-bin
-  done
-fi
+# Prefer the -bin repacks when their aarch64 builds are in the repo
+# (chromium: omacom's patched build; localsend: upstream's arm64 release —
+# the base list asks for the plain names, which don't exist on ALARM).
+for sub in chromium=omarchy-chromium-bin localsend=localsend-bin; do
+  from=${sub%%=*} to=${sub#*=}
+  if pkg_available "$to"; then
+    for i in "${!requested[@]}"; do
+      [[ ${requested[$i]} == "$from" ]] && requested[$i]=$to
+    done
+  fi
+done
 
 available=() missing=()
 for p in "${requested[@]}"; do
@@ -271,6 +275,9 @@ note "boot kernel: $kernel_img"
 # BCM2712). Neutralize both before generating the initramfs.
 rm -f "$root/etc/mkinitcpio.conf.d/thunderbolt_module.conf"
 sed -i 's/\bbtrfs-overlayfs\b//g' "$root/etc/mkinitcpio.conf.d/omarchy_hooks.conf" 2>/dev/null || true
+# The encrypt hooks assume upstream's LUKS root; ours is plain ext4. Harmless
+# (falls through after an ERROR at boot) but scary in the log — drop them.
+sed -i -E 's/\b(sd-)?encrypt\b//g' "$root/etc/mkinitcpio.conf.d/omarchy_hooks.conf" 2>/dev/null || true
 
 # Initramfs: not strictly required (ALARM Pi kernels mount ext4 roots
 # directly), but omarchy-settings configures plymouth via mkinitcpio drop-ins,
@@ -358,7 +365,14 @@ rm -f "$root/usr/bin/qemu-aarch64-static"
 : >"$root/etc/machine-id"
 mv "$root/etc/resolv.conf.image" "$root/etc/resolv.conf" 2>/dev/null || true
 
-genfstab -U "$root" | grep -vE '^\s*(#|$)' >>"$root/etc/fstab"
+# fstab: written by hand, NOT genfstab — inside a build container genfstab
+# can't resolve UUIDs (no udev/blkid data) and falls back to the build host's
+# loop device paths (/dev/loopXp1), and it also copies any swap active on the
+# build host into the image. Both PARTUUIDs are deterministic ($DISK_ID).
+cat >>"$root/etc/fstab" <<EOF
+PARTUUID=$DISK_ID-02  /      ext4  defaults  0 1
+PARTUUID=$DISK_ID-01  /boot  vfat  defaults  0 2
+EOF
 
 note ""
 note "=== image summary ==="
