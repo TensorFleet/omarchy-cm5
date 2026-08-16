@@ -1,0 +1,12 @@
+# omarchy's package repo renames neovim to `nvim` (their own build); the
+# base list asks for that name. On aarch64 ALARM ships real neovim, so this
+# is a pure name-mapping metapackage.
+pkgname=nvim
+pkgver=1
+pkgrel=1
+pkgdesc="Name-mapping metapackage: omarchy base list's nvim -> ALARM neovim"
+arch=('any')
+url="https://neovim.io"
+license=('Apache-2.0')
+depends=('neovim')
+package() { :; }

@@ -1,0 +1,24 @@
+# aarch64 repack of Microsoft's official .NET runtime linux-arm64 build.
+# omarchy's base list wants dotnet-runtime; Arch/ALARM don't serve it for
+# aarch64, Microsoft does. Named dotnet-runtime (not -bin) so the base-list
+# name resolves directly.
+pkgname=dotnet-runtime
+pkgver=10.0.11
+pkgrel=1
+pkgdesc=".NET runtime (Microsoft official linux-arm64 build)"
+arch=('aarch64')
+url="https://dotnet.microsoft.com"
+license=('MIT')
+depends=('glibc' 'gcc-libs' 'zlib' 'icu' 'openssl')
+provides=('dotnet-runtime' 'dotnet-host')
+conflicts=('dotnet-host')
+source=("dotnet-runtime-$pkgver-linux-arm64.tar.gz::https://builds.dotnet.microsoft.com/dotnet/Runtime/$pkgver/dotnet-runtime-$pkgver-linux-arm64.tar.gz")
+sha512sums=('2a729a4eff6a55e271b3ae7d4f2be98aef16df22e3b9316827558e204f7881bbf0b7b9f8ebcfb1a1419c87fbcb8a00f5be72b6474e02c695c30b2c52bafb65ed')
+
+package() {
+    install -d "$pkgdir/usr/share/dotnet" "$pkgdir/usr/bin"
+    cp -a "$srcdir"/{dotnet,host,shared} "$pkgdir/usr/share/dotnet/"
+    [[ -d $srcdir/LICENSE.txt ]] || install -Dm644 "$srcdir/LICENSE.txt" \
+        "$pkgdir/usr/share/licenses/$pkgname/LICENSE" 2>/dev/null || true
+    ln -s /usr/share/dotnet/dotnet "$pkgdir/usr/bin/dotnet"
+}
