@@ -52,6 +52,8 @@ check hard "fstab free of build-host leakage"     bash -c "! grep -E '/dev/loop|
 
 # Installer + hosted repo
 check hard "install-to-disk installer present"    test -x "$mnt/usr/local/bin/omarchy-cm5-install-to-disk"
+check hard "forked disk machinery present"        test -f "$mnt/usr/local/share/omarchy-cm5/disk-partitioning.sh"
+check hard "parted present (installer dependency)" test -e "$mnt/usr/bin/parted"
 check hard "install-to-disk service wired"        test -L "$mnt/etc/systemd/system/multi-user.target.wants/omarchy-cm5-install-to-disk.service"
 check hard "rsync present (installer dependency)" test -e "$mnt/usr/bin/rsync"
 check hard "[omarchy] repo points at hosted URL"  grep -q 'Server = https://github.com/TensorFleet/omarchy-cm5/releases/download/aarch64-pkgs' "$mnt/etc/pacman.conf"

@@ -18,7 +18,11 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+      - name: Install parted
+        run: sudo apt-get update && sudo apt-get install -y parted
       - name: Device-selection unit tests (mocked lsblk/findmnt/blockdev)
         run: bash tests/installer-detection.test.sh
+      - name: Partition machinery unit tests (forked from omarchy-iso)
+        run: bash tests/partition-helpers.test.sh
       - name: shellcheck installer + first-boot scripts
         run: shellcheck -x overlay/install/*.sh

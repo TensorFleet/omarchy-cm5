@@ -8,7 +8,7 @@
 # switcher may probe (avx2 → cpu on ARM).
 pkgname=voxtype-bin
 pkgver=0.7.5
-pkgrel=1
+pkgrel=2
 pkgdesc="Push-to-talk voice-to-text for Linux (pre-built aarch64 binaries)"
 arch=('aarch64')
 url="https://voxtype.io"
@@ -63,10 +63,13 @@ package() {
         ln -sf voxtype-onnx "$pkgdir/usr/lib/voxtype/$compat"
     done
 
-    # Upstream's .install picks a CUDA flavor for /usr/bin/voxtype; on ARM
-    # there is exactly one sensible default.
+    # Upstream's x86 .install defaults /usr/bin/voxtype to an ONNX variant,
+    # and omarchy-voxtype-install assumes that (its `voxtype setup onnx
+    # --enable` step must be a no-op re-point, or it needs sudo it doesn't
+    # have). Mirror that: default to the ONNX engine; whisper stays a
+    # `sudo voxtype setup whisper --enable` away.
     install -d "$pkgdir/usr/bin"
-    ln -sf /usr/lib/voxtype/voxtype-cpu "$pkgdir/usr/bin/voxtype"
+    ln -sf /usr/lib/voxtype/voxtype-onnx "$pkgdir/usr/bin/voxtype"
 
     install -Dm755 "$srcdir/voxtype-configure-launcher-$pkgver" \
         "$pkgdir/usr/bin/voxtype-configure-launcher"

@@ -15,5 +15,7 @@ libcamera
 sudo
 base-devel
 
-# omarchy-cm5-install-to-disk clones the running system onto eMMC/NVMe
+# omarchy-cm5-install-to-disk clones the running system onto eMMC/NVMe;
+# its disk machinery (forked from omarchy-iso) drives parted.
 rsync
+parted

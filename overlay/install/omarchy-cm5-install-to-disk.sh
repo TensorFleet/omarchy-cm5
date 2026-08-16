@@ -121,24 +121,41 @@ if ! confirm "Install Omarchy to $target now?"; then
 fi
 
 # --- partition: same layout as the image, fresh disk id ---------------------
-# A new MBR id (and thus new PARTUUIDs) means the installed system and the
-# stick can coexist without root=PARTUUID ambiguity.
+# Disk machinery forked from upstream omarchy-iso (disk-partitioning.sh):
+# read-back partition numbering, creation bookkeeping, rollback on failure.
+# Pi adaptations: MBR label (firmware boot — no GPT/EFI/limine), fixed
+# 512M FAT + ext4 layout, fresh MBR disk id so the installed system's
+# PARTUUIDs can't collide with the stick's.
+lib=${OMARCHY_CM5_LIB:-/usr/local/share/omarchy-cm5}
+# shellcheck source=overlay/installer/disk-partitioning.sh
+source "$lib/disk-partitioning.sh"
+disk_abort_hook() { warn "$1"; rollback_created_parts "$target"; }
+
 newid=$(od -An -N4 -tx4 /dev/urandom | tr -d ' ')
-sfdisk --wipe always "$target" <<EOF
-label: dos
-label-id: 0x$newid
-start=2048, size=1048576, type=c, bootable
-start=1050624, type=83
-EOF
-partx -u "$target" || true
+boot_start=$((2048 * 512))
+boot_end=$((boot_start + 512 * 1024 * 1024))
+disk_end=$(( $(blockdev --getsize64 "$target") - 1024 * 1024 ))
 
-pp=""; [[ $target == *[0-9] ]] && pp="p"
-bootp="${target}${pp}1" rootp="${target}${pp}2"
-for _ in {1..20}; do [[ -b $bootp && -b $rootp ]] && break; sleep 0.5; done
-[[ -b $bootp && -b $rootp ]] || { warn "partitions never appeared on $target"; exit 1; }
+disk_step "clearing signatures on $target" wipefs -af "$target"
+disk_step "writing MBR label" parted --script "$target" mklabel msdos
+create_partition "$target" "$boot_start" "$boot_end" fat32 OMARCHYBOOT ||
+  _disk_abort "creating the boot partition"
+bootnum=$created_partition_number
+bootp=$(partition_path "$target" "$bootnum")
+create_partition "$target" "$boot_end" "$disk_end" ext4 omarchy-root ||
+  _disk_abort "creating the root partition"
+rootnum=$created_partition_number
+rootp=$(partition_path "$target" "$rootnum")
+disk_step "setting boot flag" parted --script "$target" set "$bootnum" boot on
+disk_step "setting disk id 0x$newid" sfdisk --disk-id "$target" "0x$newid"
+partprobe "$target" 2>/dev/null || true
+wait_for_device "$bootp" || _disk_abort "boot partition device never appeared"
+wait_for_device "$rootp" || _disk_abort "root partition device never appeared"
+printf -v boot_partuuid '%s-%02d' "$newid" "$bootnum"
+printf -v root_partuuid '%s-%02d' "$newid" "$rootnum"
 
-mkfs.vfat -F 32 -n OMARCHYBOOT "$bootp" >/dev/null
-mkfs.ext4 -qF -L omarchy-root "$rootp"
+disk_step "formatting $bootp" mkfs.vfat -F 32 -n OMARCHYBOOT "$bootp"
+disk_step "formatting $rootp" mkfs.ext4 -qF -L omarchy-root "$rootp"
 
 mnt=/run/omarchy-install-target
 mkdir -p "$mnt"
@@ -158,11 +175,11 @@ rsync -aHAXx --info=progress2 \
 rsync -a /boot/ "$mnt/boot/"
 
 # --- retarget boot + fstab to the new PARTUUIDs -----------------------------
-sed -i "s/root=PARTUUID=[0-9a-fA-F-]*/root=PARTUUID=$newid-02/" "$mnt/boot/cmdline.txt"
+sed -i "s/root=PARTUUID=[0-9a-fA-F-]*/root=PARTUUID=$root_partuuid/" "$mnt/boot/cmdline.txt"
 cat >"$mnt/etc/fstab" <<EOF
 # Written by omarchy-cm5-install-to-disk
-PARTUUID=$newid-02  /      ext4  defaults  0 1
-PARTUUID=$newid-01  /boot  vfat  defaults  0 2
+PARTUUID=$root_partuuid  /      ext4  defaults  0 1
+PARTUUID=$boot_partuuid  /boot  vfat  defaults  0 2
 EOF
 # grow-root re-runs on the installed system (target may be bigger than image)
 rm -f "$mnt/var/lib/omarchy-cm5/root-grown"
