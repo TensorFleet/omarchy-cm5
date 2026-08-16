@@ -14,3 +14,6 @@ libcamera
 # them explicitly — omarchy-base.packages assumes they're already present.
 sudo
 base-devel
+
+# omarchy-cm5-install-to-disk clones the running system onto eMMC/NVMe
+rsync

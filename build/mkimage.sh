@@ -358,6 +358,16 @@ install -Dm644 "$overlay/systemd/omarchy-cm5-grow-root.service" \
 ln -sf /etc/systemd/system/omarchy-cm5-grow-root.service \
   "$root/etc/systemd/system/multi-user.target.wants/omarchy-cm5-grow-root.service"
 
+# USB-boot installer: when booted from a stick on a machine with internal
+# storage, first boot offers (and defaults to) installing onto eMMC/NVMe —
+# never the USB itself. Inert once installed (root not on USB).
+install -Dm755 "$overlay/install/omarchy-cm5-install-to-disk.sh" \
+  "$root/usr/local/bin/omarchy-cm5-install-to-disk"
+install -Dm644 "$overlay/systemd/omarchy-cm5-install-to-disk.service" \
+  "$root/etc/systemd/system/omarchy-cm5-install-to-disk.service"
+ln -sf /etc/systemd/system/omarchy-cm5-install-to-disk.service \
+  "$root/etc/systemd/system/multi-user.target.wants/omarchy-cm5-install-to-disk.service"
+
 # --- 8. finalize -------------------------------------------------------------
 # On-device [omarchy] repo: the build consumed a baked-in local pool; deployed
 # devices pull package updates from the hosted release repo instead (published

@@ -1,0 +1,24 @@
+[Unit]
+Description=Omarchy CM5 installer: install to internal storage (eMMC/NVMe)
+# Only before first-boot provisioning has happened; the script itself exits
+# instantly unless the system is running from USB and an internal disk exists.
+ConditionPathExists=/var/lib/omarchy/provisioning/pending
+After=systemd-user-sessions.service local-fs.target
+Before=omarchy-provision-owner.service display-manager.service getty@tty1.service
+Conflicts=getty@tty1.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStartPre=-/usr/bin/plymouth quit
+ExecStart=/usr/local/bin/omarchy-cm5-install-to-disk
+StandardInput=tty
+StandardOutput=tty
+StandardError=tty
+TTYPath=/dev/tty1
+TTYReset=yes
+TTYVHangup=yes
+TTYVTDisallocate=yes
+
+[Install]
+WantedBy=multi-user.target

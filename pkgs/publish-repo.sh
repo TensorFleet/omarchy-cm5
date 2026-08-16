@@ -32,8 +32,9 @@ else
     bash -c 'cd /pool && repo-add -q '"$DBNAME"'.db.tar.gz $(ls *.pkg.tar.* | grep -v -- "-debug-")'
 fi
 
-# GitHub can't host the omarchy.db -> omarchy.db.tar.gz symlink; upload the
-# tarball under both names pacman might request.
+# GitHub can't host the omarchy.db -> omarchy.db.tar.gz symlink repo-add
+# creates; replace it with a real copy so both asset names upload.
+rm -f "$OUT/$DBNAME.db"
 cp "$OUT/$DBNAME.db.tar.gz" "$OUT/$DBNAME.db"
 
 gh release create "$REPO_TAG" -R "$GH_REPO" \

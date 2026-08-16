@@ -49,6 +49,12 @@ check hard "kernel modules installed"             has "$mnt/usr/lib/modules/*/ke
 check hard "fstab mounts / by PARTUUID"           grep -qE 'PARTUUID=2ca5b007-02[[:space:]]+/[[:space:]]' "$mnt/etc/fstab"
 check hard "fstab mounts /boot by PARTUUID"       grep -qE 'PARTUUID=2ca5b007-01[[:space:]]+/boot[[:space:]]' "$mnt/etc/fstab"
 check hard "fstab free of build-host leakage"     bash -c "! grep -E '/dev/loop|[[:space:]]swap[[:space:]]' '$mnt/etc/fstab'"
+
+# Installer + hosted repo
+check hard "install-to-disk installer present"    test -x "$mnt/usr/local/bin/omarchy-cm5-install-to-disk"
+check hard "install-to-disk service wired"        test -L "$mnt/etc/systemd/system/multi-user.target.wants/omarchy-cm5-install-to-disk.service"
+check hard "rsync present (installer dependency)" test -e "$mnt/usr/bin/rsync"
+check hard "[omarchy] repo points at hosted URL"  grep -q 'Server = https://github.com/TensorFleet/omarchy-cm5/releases/download/aarch64-pkgs' "$mnt/etc/pacman.conf"
 check hard "aarch64 rootfs (ELF machine)"         bash -c "file -b '$mnt/usr/bin/bash' | grep -q aarch64"
 check hard "systemd present"                      test -e "$mnt/usr/lib/systemd/systemd"
 check hard "NetworkManager enabled"               test -L "$mnt/etc/systemd/system/multi-user.target.wants/NetworkManager.service"
