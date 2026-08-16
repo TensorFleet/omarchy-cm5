@@ -1,0 +1,81 @@
+# aarch64 repack of voxtype-bin. Upstream (peteonrails/voxtype) publishes
+# signed aarch64 release binaries, but omarchy-pkgs' voxtype-bin PKGBUILD is
+# x86-only (avx2/avx512/CUDA/MIGraphX variant zoo + an install script that
+# picks a CUDA flavor). This is the minimal ARM equivalent: the whisper CPU
+# binary + the ONNX CPU binary + the arch-neutral support files. The x86-only
+# OSD frontends (osd/gtk4/quickshell launchers) don't ship for aarch64 and are
+# omitted. Compat symlinks cover the x86 variant names the CLI's engine
+# switcher may probe (avx2 → cpu on ARM).
+pkgname=voxtype-bin
+pkgver=0.7.5
+pkgrel=1
+pkgdesc="Push-to-talk voice-to-text for Linux (pre-built aarch64 binaries)"
+arch=('aarch64')
+url="https://voxtype.io"
+license=('MIT')
+depends=('alsa-lib' 'curl' 'gcc-libs' 'glibc')
+optdepends=(
+    'wtype: keyboard simulation for Wayland (recommended)'
+    'wl-clipboard: clipboard support'
+    'libnotify: desktop notifications'
+    'pipewire: audio server (recommended)'
+    'pipewire-alsa: ALSA compatibility for PipeWire'
+)
+provides=('voxtype')
+conflicts=('voxtype')
+backup=('etc/voxtype/config.toml')
+_github="https://github.com/peteonrails/voxtype/releases/download/v$pkgver"
+_raw="https://raw.githubusercontent.com/peteonrails/voxtype/v$pkgver"
+source=(
+    "voxtype-$pkgver-cpu::$_github/voxtype-$pkgver-linux-aarch64-cpu"
+    "voxtype-$pkgver-onnx::$_github/voxtype-$pkgver-linux-aarch64-onnx"
+    "config-$pkgver.toml::$_raw/config/default.toml"
+    "voxtype-$pkgver.service::$_raw/packaging/systemd/voxtype.service"
+    "voxtype-$pkgver.bash::$_raw/packaging/completions/voxtype.bash"
+    "voxtype-$pkgver.zsh::$_raw/packaging/completions/voxtype.zsh"
+    "voxtype-$pkgver.fish::$_raw/packaging/completions/voxtype.fish"
+    "LICENSE-$pkgver::$_raw/LICENSE"
+    "voxtype-configure-$pkgver.desktop::$_raw/packaging/voxtype-configure.desktop"
+    "voxtype-configure-launcher-$pkgver::$_raw/packaging/scripts/voxtype-configure-launcher"
+)
+sha256sums=(
+    'bf72fbfaae1f4720c25ee0a8e75ec381f6b7811b1e810d80dfb9207f4ebc2e4c'  # aarch64-cpu
+    '360cc6e2ccbce7ea0d7c7cf92f23ebada7a6678f0e92ddaecbea44966d757b63'  # aarch64-onnx
+    'a0bc20688fbf93bfcebbde1e1cc5694a835931b2ff05ac27d4c92e88b7a12003'  # config/default.toml
+    '531c3658e229619e56bb01659fb81f401767b85e1d6e2acd1ac67ee3414a168c'  # voxtype.service
+    '65c95805d9b03ccc2fadb9d63a03ab79974b00091df8457ee8ef290ec6bd5b12'  # voxtype.bash
+    'e5e63b3c7f48238cf719e4f2ef90c1f9c5c7e8cd25eaebc9f78bdd34b24b6605'  # voxtype.zsh
+    'f720ddd24ee97c105b448323899c36bca7c63d00c2d42c4a3da70c3d157dccbb'  # voxtype.fish
+    '31123c45b4ff9cb5fd9e01083350fea6ccaf14969013fd48e4c95fdf89e6eb4b'  # LICENSE
+    '32144a4a5210092b0aa909f6de7a43ebe8bbf82fa3dfb1f3519787512fdf8e4b'  # voxtype-configure.desktop
+    '2001788ae3c087ff2589ff69c9598160da1c783025cc52ca3382736694a97090'  # voxtype-configure-launcher
+)
+
+package() {
+    install -Dm755 "$srcdir/voxtype-$pkgver-cpu" "$pkgdir/usr/lib/voxtype/voxtype-cpu"
+    install -Dm755 "$srcdir/voxtype-$pkgver-onnx" "$pkgdir/usr/lib/voxtype/voxtype-onnx"
+
+    # Compat names: the CLI's engine/variant switcher probes the x86 names.
+    for compat in voxtype-avx2 voxtype-avx512 voxtype-vulkan; do
+        ln -sf voxtype-cpu "$pkgdir/usr/lib/voxtype/$compat"
+    done
+    for compat in voxtype-onnx-avx2 voxtype-onnx-avx512; do
+        ln -sf voxtype-onnx "$pkgdir/usr/lib/voxtype/$compat"
+    done
+
+    # Upstream's .install picks a CUDA flavor for /usr/bin/voxtype; on ARM
+    # there is exactly one sensible default.
+    install -d "$pkgdir/usr/bin"
+    ln -sf /usr/lib/voxtype/voxtype-cpu "$pkgdir/usr/bin/voxtype"
+
+    install -Dm755 "$srcdir/voxtype-configure-launcher-$pkgver" \
+        "$pkgdir/usr/bin/voxtype-configure-launcher"
+    install -Dm644 "$srcdir/voxtype-configure-$pkgver.desktop" \
+        "$pkgdir/usr/share/applications/voxtype-configure.desktop"
+    install -Dm644 "$srcdir/config-$pkgver.toml" "$pkgdir/etc/voxtype/config.toml"
+    install -Dm644 "$srcdir/voxtype-$pkgver.service" "$pkgdir/usr/lib/systemd/user/voxtype.service"
+    install -Dm644 "$srcdir/LICENSE-$pkgver" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+    install -Dm644 "$srcdir/voxtype-$pkgver.bash" "$pkgdir/usr/share/bash-completion/completions/voxtype"
+    install -Dm644 "$srcdir/voxtype-$pkgver.zsh" "$pkgdir/usr/share/zsh/site-functions/_voxtype"
+    install -Dm644 "$srcdir/voxtype-$pkgver.fish" "$pkgdir/usr/share/fish/vendor_completions.d/voxtype.fish"
+}

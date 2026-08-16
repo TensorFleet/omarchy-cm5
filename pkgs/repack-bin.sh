@@ -31,15 +31,30 @@ git clone --depth 1 https://github.com/omacom-io/omarchy-pkgs "$build_dir/omarch
 chown -R builder "$build_dir"
 
 : >"$OUT/REPACKED.txt"
-for pkg in "${PACKAGES[@]}"; do
-  dir=$build_dir/omarchy-pkgs/pkgbuilds/$pkg
-  [[ -d $dir ]] || { echo "FAILED: $pkg (no PKGBUILD)" >>"$OUT/REPACKED.txt"; continue; }
+build_pkg() {
+  local pkg=$1 dir=$2
+  [[ -d $dir ]] || { echo "FAILED: $pkg (no PKGBUILD)" >>"$OUT/REPACKED.txt"; return; }
   if (cd "$dir" && sudo -u builder makepkg -d -f --ignorearch --skipchecksums --skippgpcheck --noconfirm); then
     cp "$dir"/*-aarch64.pkg.tar.zst "$OUT/" 2>/dev/null || cp "$dir"/*.pkg.tar.zst "$OUT/"
     echo "$pkg" >>"$OUT/REPACKED.txt"
   else
     echo "FAILED: $pkg" >>"$OUT/REPACKED.txt"
   fi
+}
+for pkg in "${PACKAGES[@]}"; do
+  build_pkg "$pkg" "$build_dir/omarchy-pkgs/pkgbuilds/$pkg"
+done
+
+# Our own aarch64 PKGBUILDs for packages whose omarchy-pkgs PKGBUILD is
+# x86-only even though upstream publishes arm64 binaries (e.g. voxtype-bin).
+for dir in "$WORK"/pkgs/aarch64-extra/*/; do
+  [[ -d $dir ]] || continue
+  pkg=$(basename "$dir")
+  staged=$build_dir/aarch64-extra/$pkg
+  sudo -u builder mkdir -p "$staged"
+  cp -r "$dir"/. "$staged/"
+  chown -R builder "$staged"
+  build_pkg "$pkg" "$staged"
 done
 
 cat "$OUT/REPACKED.txt"

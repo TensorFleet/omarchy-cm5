@@ -219,6 +219,24 @@ code exists — and which problems vanish on a native aarch64 builder (†):
 - **Actions → build-arm-packages**: stage 2, publishing into the rolling
   `aarch64-pkgs` release that both CI and your local `mkimage.sh` can pull
   from (`gh release download aarch64-pkgs -p '*.pkg.tar.*' -D build/pkgs-out`).
+  Its final `publish-db` job runs `pkgs/publish-repo.sh` (repo-add over the
+  whole pool + db upload), which makes the release a **servable pacman
+  repo** — deployed devices carry it as their `[omarchy]` repo:
+
+  ```
+  [omarchy]
+  SigLevel = Optional TrustAll
+  Server = https://github.com/TensorFleet/omarchy-cm5/releases/download/aarch64-pkgs
+  ```
+
+  `mkimage.sh` points the image's pacman.conf there at finalize (and drops
+  the baked-in /opt/omarchy-repo pool, ~450 MB). Run `pkgs/publish-repo.sh`
+  locally after a local package build to push your pool to the same repo.
+
+Packages whose omarchy-pkgs PKGBUILD is x86-only even though upstream ships
+arm64 binaries get their own PKGBUILD under `pkgs/aarch64-extra/` (currently
+`voxtype-bin` — upstream publishes signed `-linux-aarch64-cpu`/`-onnx`
+builds); `repack-bin.sh` builds those alongside the omarchy-pkgs repacks.
 
 A known-good verified image already exists:
 **github.com/TensorFleet/omarchy-cm5/releases/tag/build-6** (all 35 checks

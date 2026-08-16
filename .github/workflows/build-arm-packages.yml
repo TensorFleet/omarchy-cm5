@@ -98,3 +98,21 @@ jobs:
           shopt -s nullglob
           files=(build/pkgs-out/*.pkg.tar.*)
           [ ${#files[@]} -gt 0 ] && gh release upload aarch64-pkgs "${files[@]}" --clobber
+
+  # Regenerate the pacman db over the full release pool so the release is a
+  # servable repo (Server = the release download URL). Runs after all
+  # package jobs, succeeds even if some of them were skipped or failed.
+  publish-db:
+    runs-on: ubuntu-latest
+    needs: [repack-bin, small-tools, quickshell]
+    if: always()
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Rebuild repo db from release pool
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          mkdir -p build/pkgs-out
+          gh release download aarch64-pkgs -p '*.pkg.tar.*' -D build/pkgs-out
+          bash pkgs/publish-repo.sh

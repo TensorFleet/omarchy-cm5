@@ -359,6 +359,17 @@ ln -sf /etc/systemd/system/omarchy-cm5-grow-root.service \
   "$root/etc/systemd/system/multi-user.target.wants/omarchy-cm5-grow-root.service"
 
 # --- 8. finalize -------------------------------------------------------------
+# On-device [omarchy] repo: the build consumed a baked-in local pool; deployed
+# devices pull package updates from the hosted release repo instead (published
+# by pkgs/publish-repo.sh / the build-arm-packages workflow). Dropping the
+# baked pool saves ~450 MB in the image.
+DEVICE_REPO_URL=${DEVICE_REPO_URL:-https://github.com/TensorFleet/omarchy-cm5/releases/download/aarch64-pkgs}
+if [[ -d $root/opt/omarchy-repo && -n $DEVICE_REPO_URL ]]; then
+  sed -i "s|^Server = file:///opt/omarchy-repo|Server = $DEVICE_REPO_URL|" "$root/etc/pacman.conf"
+  rm -rf "$root/opt/omarchy-repo"
+  note "device [omarchy] repo: $DEVICE_REPO_URL (baked pool removed)"
+fi
+
 umount "$root/var/cache/pacman/pkg"
 rm -rf "$hostcache"
 rm -f "$root/usr/bin/qemu-aarch64-static"
