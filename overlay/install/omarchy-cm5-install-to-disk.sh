@@ -17,11 +17,15 @@ confirm() { # confirm <prompt> — default YES
 }
 
 # --- am I running from USB? -------------------------------------------------
+# PKNAME is the kernel's own parent-device answer — never parse device names
+# by hand (a regex once turned /dev/sda2 into "disk" /dev/sda2, whose empty
+# TRAN made this exit silently and skip the whole install).
 rootsrc=$(findmnt -no SOURCE /)                 # /dev/sda2, /dev/mmcblk0p2, …
-rootdisk=$rootsrc
-[[ $rootdisk =~ [0-9]p[0-9]+$ ]] && rootdisk=${rootdisk%p*}
-[[ $rootdisk =~ ^/dev/[a-z]+[0-9]+$ ]] || rootdisk=${rootdisk%%[0-9]*}
-[[ $(lsblk -ndo TRAN "$rootdisk" 2>/dev/null) == usb ]] || exit 0
+rootdisk=/dev/$(lsblk -ndo PKNAME "$rootsrc")
+if [[ $(lsblk -ndo TRAN "$rootdisk" 2>/dev/null) != usb ]]; then
+  echo "install-to-disk: root $rootsrc is on $rootdisk (not USB) — nothing to do"
+  exit 0
+fi
 
 # --- find an internal target (never USB, never removable) -------------------
 target=""
@@ -33,7 +37,10 @@ for cand in $(lsblk -dpno NAME | grep -E '/dev/nvme[0-9]+n[0-9]+$') \
   (( $(blockdev --getsize64 "$cand") >= 14000000000 )) || continue
   target=$cand; break
 done
-[[ -n $target ]] || exit 0                      # no internal disk — live mode
+if [[ -z $target ]]; then
+  echo "install-to-disk: no internal (non-USB, non-removable, ≥14 GB) disk found — live mode"
+  exit 0
+fi
 
 size=$(lsblk -ndo SIZE "$target" | tr -d ' ')
 model=$(lsblk -ndo MODEL "$target" | sed 's/ *$//')

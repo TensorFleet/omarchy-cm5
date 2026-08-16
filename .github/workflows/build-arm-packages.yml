@@ -32,7 +32,13 @@ jobs:
           gh release create aarch64-pkgs --title "aarch64 package pool (rolling)" \
             --notes "Rolling pool of aarch64-built omarchy packages, consumed by build-image." \
             2>/dev/null || true
-          gh release upload aarch64-pkgs build/pkgs-out/*.pkg.tar.* --clobber
+          # Never clobber: a same-version re-upload changes bytes/size under
+          # a db that already references the old file, and devices then fail
+          # with "maximum file size exceeded". New versions get new filenames.
+          gh release view aarch64-pkgs --json assets -q '.assets[].name' >/tmp/have || true
+          for f in build/pkgs-out/*.pkg.tar.*; do
+            grep -qxF "$(basename "$f")" /tmp/have || gh release upload aarch64-pkgs "$f"
+          done
 
   small-tools:
     runs-on: ubuntu-latest
@@ -64,7 +70,10 @@ jobs:
             2>/dev/null || true
           shopt -s nullglob
           files=(build/pkgs-out/*.pkg.tar.*)
-          [ ${#files[@]} -gt 0 ] && gh release upload aarch64-pkgs "${files[@]}" --clobber
+          gh release view aarch64-pkgs --json assets -q '.assets[].name' >/tmp/have || true
+          for f in "${files[@]}"; do
+            grep -qxF "$(basename "$f")" /tmp/have || gh release upload aarch64-pkgs "$f"
+          done
           gh release upload aarch64-pkgs build/pkgs-out/CHROOT-BUILT.txt --clobber || true
 
   quickshell:
@@ -97,7 +106,10 @@ jobs:
             2>/dev/null || true
           shopt -s nullglob
           files=(build/pkgs-out/*.pkg.tar.*)
-          [ ${#files[@]} -gt 0 ] && gh release upload aarch64-pkgs "${files[@]}" --clobber
+          gh release view aarch64-pkgs --json assets -q '.assets[].name' >/tmp/have || true
+          for f in "${files[@]}"; do
+            grep -qxF "$(basename "$f")" /tmp/have || gh release upload aarch64-pkgs "$f"
+          done
 
   # Regenerate the pacman db over the full release pool so the release is a
   # servable repo (Server = the release download URL). Runs after all

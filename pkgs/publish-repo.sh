@@ -43,7 +43,15 @@ gh release create "$REPO_TAG" -R "$GH_REPO" \
   2>/dev/null || true
 
 echo "uploading packages + db to $GH_REPO release $REPO_TAG …" >&2
-gh release upload "$REPO_TAG" -R "$GH_REPO" --clobber \
-  "$OUT"/*.pkg.tar.* "$OUT/$DBNAME.db" "$OUT/$DBNAME.db.tar.gz"
+# Packages: never clobber (same-version re-uploads change bytes under a db
+# that references the old size — devices fail with "maximum file size
+# exceeded"). Only the db itself is replaced, and always last, so any db a
+# client holds refers to assets that still exist.
+gh release view "$REPO_TAG" -R "$GH_REPO" --json assets -q '.assets[].name' >"$OUT/.have" || true
+for f in "$OUT"/*.pkg.tar.*; do
+  grep -qxF "$(basename "$f")" "$OUT/.have" || gh release upload "$REPO_TAG" -R "$GH_REPO" "$f"
+done
+rm -f "$OUT/.have"
+gh release upload "$REPO_TAG" -R "$GH_REPO" --clobber "$OUT/$DBNAME.db" "$OUT/$DBNAME.db.tar.gz"
 
 echo "repo live: https://github.com/$GH_REPO/releases/download/$REPO_TAG" >&2
