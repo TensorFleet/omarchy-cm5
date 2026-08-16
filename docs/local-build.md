@@ -133,6 +133,13 @@ by default, reused across invocations) and runs `makepkg` per package.
 Observed timings: quickshell-git ≈ **2 h 40 m** on a 4-core x86 runner under
 qemu; expect ≈ 15–25 min native on a Pi 5. The small tools are minutes each.
 
+Beyond omarchy-pkgs, the chroot also builds Arch-official packages ALARM
+lacks: **ghostty** builds from Arch's packaging repo (clone
+`gitlab.archlinux.org/archlinux/packaging/packages/ghostty`, deps via
+pacman minus pandoc-cli, then the three ghostty-specific landmines in the
+table below). Repacked-from-upstream extras live in `pkgs/aarch64-extra/`
+(voxtype-bin, mise, dotnet-runtime, rpi-eeprom, nvim map).
+
 `tzupdate` moved here from stage 1: omarchy-pkgs rewrote it in Rust, so it
 needs a real aarch64 compile (its PKGBUILD says `arch=('x86_64')` only by
 omission; the script builds with `makepkg -A` and stamps aarch64). `yay` is
@@ -212,6 +219,8 @@ code exists — and which problems vanish on a native aarch64 builder (†):
 | First-login updater: `error: target not found: voxtype-bin` | upstream added voxtype to the base set; voxtype only publishes x86_64 binaries — no arm64 release exists to repack | expected, harmless; revisit if voxtype ships arm64 |
 | zig builds in a container chroot: `unable to discover remote git server capabilities: ResolvConfParseFailed` | zig's builtin git client parses /etc/resolv.conf itself and chokes on Docker's entries (curl is unaffected — glibc resolver) | write a plain `nameserver 1.1.1.1` resolv.conf in the outer container before arch-chroot |
 | ghostty build: `package not found at …/p/uucode-0.2.0-…` after a "Failed to fetch git+…" | upstream dependency repo drifted; the pinned commit now hashes as a different version, and the mirror fallback didn't populate the cache | `zig fetch https://deps.files.ghostty.org/<name-version-hash>.tar.gz` into the build's ZIG_GLOBAL_CACHE_DIR, then re-run makepkg |
+| ghostty: cache mismatch persists / weird `N-V-__8AA…` names in the zig cache | ghostty pins zig 0.15.2; ALARM ships 0.16, whose package-cache format differs | build with the official ziglang.org aarch64 0.15.2 static tarball on PATH (`/opt/zig-0.15.2`), fresh ZIG_GLOBAL_CACHE_DIR |
+| ghostty: 4 steps fail with `failed to spawn … pandoc: FileNotFound` | `-Demit-docs` (default-on) needs pandoc; ALARM has no pandoc-cli | `-Demit-docs=false` on the zig build line — removing the flag is not enough |
 
 ## CI equivalents
 
