@@ -125,6 +125,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          # publish-repo.sh downloads the release pool itself and generates
+          # the db from those exact bytes; an empty local pool is fine.
           mkdir -p build/pkgs-out
-          gh release download aarch64-pkgs -p '*.pkg.tar.*' -D build/pkgs-out
           bash pkgs/publish-repo.sh
