@@ -1,0 +1,32 @@
+# aarch64 repack of mise (jdx/mise) from upstream's linux-arm64 release.
+# omarchy's base list wants `mise` (omarchy-default-agent installs the coding
+# agent through it); Arch packages it for x86_64 only and ALARM not at all,
+# but upstream ships arm64 binaries.
+pkgname=mise
+pkgver=2026.8.6
+pkgrel=1
+pkgdesc="The front-end to your dev env (polyglot runtime/tool version manager)"
+arch=('aarch64')
+url="https://mise.jdx.dev"
+license=('MIT')
+provides=('mise')
+conflicts=('mise-bin')
+source=("mise-v$pkgver-linux-arm64.tar.gz::https://github.com/jdx/mise/releases/download/v$pkgver/mise-v$pkgver-linux-arm64.tar.gz")
+sha256sums=('b92744ceb9a01f0bb198bfcf2ba49c36918c9e4353a34be50f23d5b6e93c28ee')
+
+package() {
+    install -Dm755 "$srcdir/mise/bin/mise" "$pkgdir/usr/bin/mise"
+    # completions + man page ship in the tarball when present; install if so
+    [[ -f $srcdir/mise/man/man1/mise.1 ]] &&
+        install -Dm644 "$srcdir/mise/man/man1/mise.1" "$pkgdir/usr/share/man/man1/mise.1"
+    [[ -f $srcdir/mise/share/completions/mise.bash ]] &&
+        install -Dm644 "$srcdir/mise/share/completions/mise.bash" \
+            "$pkgdir/usr/share/bash-completion/completions/mise"
+    [[ -f $srcdir/mise/share/completions/_mise ]] &&
+        install -Dm644 "$srcdir/mise/share/completions/_mise" \
+            "$pkgdir/usr/share/zsh/site-functions/_mise"
+    [[ -f $srcdir/mise/share/completions/mise.fish ]] &&
+        install -Dm644 "$srcdir/mise/share/completions/mise.fish" \
+            "$pkgdir/usr/share/fish/vendor_completions.d/mise.fish"
+    return 0
+}

@@ -42,6 +42,14 @@ if [[ -z $target ]]; then
   exit 0
 fi
 
+# Test hook: report the decision and stop before anything destructive.
+# tests/installer-detection.test.sh runs the real script under mocked
+# lsblk/findmnt/blockdev and asserts on this output.
+if [[ ${OMARCHY_INSTALL_CHECK:-} == 1 ]]; then
+  echo "TARGET=$target"
+  exit 0
+fi
+
 size=$(lsblk -ndo SIZE "$target" | tr -d ' ')
 model=$(lsblk -ndo MODEL "$target" | sed 's/ *$//')
 
