@@ -19,3 +19,11 @@ base-devel
 # its disk machinery (forked from omarchy-iso) drives parted.
 rsync
 parted
+
+# EEPROM boot-order management (BOOT_ORDER for USB/NVMe/eMMC priority) —
+# ALARM doesn't carry it; ours repacks raspberrypi/rpi-eeprom.
+rpi-eeprom
+
+# SSHing in from a Ghostty terminal sets TERM=xterm-ghostty; without the
+# terminfo entry every curses app on the Pi refuses to start.
+ghostty-terminfo

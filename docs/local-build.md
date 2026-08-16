@@ -210,6 +210,8 @@ code exists — and which problems vanish on a native aarch64 builder (†):
 | First boot detours through emergency mode ("root account is locked … Press Enter to continue"), then provisioning runs normally; later boots clean | grow-root ran `Before=sysinit.target` and rewrote the partition table (sfdisk + `partx -u`) while /boot was still being fsck'd/mounted | grow-root is now an ordinary `After=local-fs.target` service; online resize2fs doesn't need to run early |
 | Plymouth splash renders as a white field with scattered pixel clusters until KMS takes over | Pi firmware hands the kernel a 16-bit RGB565 simplefb (`format=r5g6b5` in dmesg); plymouth mis-renders its dark theme into it during the ~1s before vc4 binds | `framebuffer_depth=32` in overlay config.txt |
 | First-login updater: `error: target not found: voxtype-bin` | upstream added voxtype to the base set; voxtype only publishes x86_64 binaries — no arm64 release exists to repack | expected, harmless; revisit if voxtype ships arm64 |
+| zig builds in a container chroot: `unable to discover remote git server capabilities: ResolvConfParseFailed` | zig's builtin git client parses /etc/resolv.conf itself and chokes on Docker's entries (curl is unaffected — glibc resolver) | write a plain `nameserver 1.1.1.1` resolv.conf in the outer container before arch-chroot |
+| ghostty build: `package not found at …/p/uucode-0.2.0-…` after a "Failed to fetch git+…" | upstream dependency repo drifted; the pinned commit now hashes as a different version, and the mirror fallback didn't populate the cache | `zig fetch https://deps.files.ghostty.org/<name-version-hash>.tar.gz` into the build's ZIG_GLOBAL_CACHE_DIR, then re-run makepkg |
 
 ## CI equivalents
 
