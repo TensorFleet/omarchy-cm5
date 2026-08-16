@@ -6,14 +6,54 @@
 # (live-on-stick mode). Runs on tty1 before omarchy-provision-owner via
 # omarchy-cm5-install-to-disk.service; on an installed (internal) system the
 # USB check makes it exit immediately.
+#
+# Presentation mirrors upstream's omarchy-provision-owner (the "real"
+# installer look): the omarchy pixel logo, the same gum palette, the same
+# console-font scaling — so install → provisioning reads as one flow.
 set -euo pipefail
 
-say()  { command -v gum >/dev/null && gum style --foreground 212 "$*" || echo "$*"; }
-warn() { command -v gum >/dev/null && gum style --foreground 196 "$*" || echo "$*" >&2; }
+OMARCHY_PATH="${OMARCHY_PATH:-/usr/share/omarchy}"
+LOGO_PATH="$OMARCHY_PATH/logo.txt"
+
+# Upstream's gum palette (omarchy-provision-owner)
+export GUM_CONFIRM_PROMPT_FOREGROUND="6"
+export GUM_CONFIRM_SELECTED_FOREGROUND="0"
+export GUM_CONFIRM_SELECTED_BACKGROUND="2"
+export GUM_CONFIRM_UNSELECTED_FOREGROUND="7"
+export GUM_CONFIRM_UNSELECTED_BACKGROUND="0"
+export GUM_CHOOSE_CURSOR_FOREGROUND="2"
+export GUM_CHOOSE_HEADER_FOREGROUND="6"
+
+have_gum() { command -v gum >/dev/null; }
+
+say()  { if have_gum; then gum style --foreground 7 "$*"; else echo "$*"; fi }
+accent(){ if have_gum; then gum style --foreground 2 "$*"; else echo "$*"; fi }
+warn() { if have_gum; then gum style --foreground 1 "$*"; else echo "$*" >&2; fi }
 
 confirm() { # confirm <prompt> — default YES
-  if command -v gum >/dev/null; then gum confirm --default=yes "$1"
+  if have_gum; then gum confirm --default=yes "$1"
   else read -rp "$1 [Y/n] " a; [[ ! $a =~ ^[Nn] ]]; fi
+}
+
+# Match upstream's first-boot console sizing: on a high-resolution KMS
+# console the default 8x16 font is tiny; step up so the logo and prompts
+# read at the size the real installer renders at. (Simplified from
+# omarchy-provision-owner's empirical picker; same fonts, same intent.)
+scale_console_font() {
+  [[ $(tty 2>/dev/null) == /dev/tty* ]] || return 0
+  local rows; rows=$(stty size 2>/dev/null | awk '{print $1}') || return 0
+  if   (( rows >= 100 )); then setfont latarcyrheb-sun32 2>/dev/null || true
+  elif (( rows >= 60  )); then setfont sun12x22 2>/dev/null || true
+  fi
+}
+
+render_header() {
+  clear
+  if [[ -f $LOGO_PATH ]] && have_gum; then
+    gum style --foreground 2 --padding "1 0" "$(cat "$LOGO_PATH")"
+  else
+    accent "  OMARCHY"
+  fi
 }
 
 # --- am I running from USB? -------------------------------------------------
@@ -27,20 +67,21 @@ if [[ $(lsblk -ndo TRAN "$rootdisk" 2>/dev/null) != usb ]]; then
   exit 0
 fi
 
-# --- find an internal target (never USB, never removable) -------------------
-target=""
+# --- find internal targets (never USB, never removable) ---------------------
+targets=()
 for cand in $(lsblk -dpno NAME | grep -E '/dev/nvme[0-9]+n[0-9]+$') \
             $(lsblk -dpno NAME | grep -E '/dev/mmcblk[0-9]+$'); do
   [[ $cand == "$rootdisk" ]] && continue
   [[ $(lsblk -ndo TRAN "$cand" 2>/dev/null) == usb ]] && continue
   [[ $(lsblk -ndo RM "$cand" 2>/dev/null | tr -d ' ') == 1 ]] && continue
   (( $(blockdev --getsize64 "$cand") >= 14000000000 )) || continue
-  target=$cand; break
+  targets+=("$cand")
 done
-if [[ -z $target ]]; then
+if ((${#targets[@]} == 0)); then
   echo "install-to-disk: no internal (non-USB, non-removable, ≥14 GB) disk found — live mode"
   exit 0
 fi
+target=${targets[0]}                            # NVMe sorts before eMMC
 
 # Test hook: report the decision and stop before anything destructive.
 # tests/installer-detection.test.sh runs the real script under mocked
@@ -50,15 +91,28 @@ if [[ ${OMARCHY_INSTALL_CHECK:-} == 1 ]]; then
   exit 0
 fi
 
-size=$(lsblk -ndo SIZE "$target" | tr -d ' ')
-model=$(lsblk -ndo MODEL "$target" | sed 's/ *$//')
+label_of() {
+  local size model
+  size=$(lsblk -ndo SIZE "$1" | tr -d ' ')
+  model=$(lsblk -ndo MODEL "$1" | sed 's/ *$//')
+  echo "$1  ($size${model:+ — $model})"
+}
 
-clear
+scale_console_font
+render_header
+
+# Multiple internal disks: choose with the omarchy menu; one: it's the default.
+if ((${#targets[@]} > 1)) && have_gum; then
+  labels=(); for t in "${targets[@]}"; do labels+=("$(label_of "$t")"); done
+  picked=$(gum choose --header "Install Omarchy to which disk?" "${labels[@]}")
+  target=${picked%% *}
+fi
+
 say ""
-say "  Omarchy CM5 installer"
+accent "  Install Omarchy to internal storage"
 say ""
-say "  Internal storage found: $target ($size ${model:+— $model})"
-warn "  Installing ERASES EVERYTHING on $target."
+say "  Target: $(label_of "$target")"
+warn "  Everything on this disk will be erased."
 say ""
 if ! confirm "Install Omarchy to $target now?"; then
   say "Skipping install — continuing as a live system on the USB stick."
@@ -93,7 +147,9 @@ mkdir -p "$mnt/boot"
 mount "$bootp" "$mnt/boot"
 
 # --- copy the running system ------------------------------------------------
-say "Copying system to $target (a few minutes) …"
+render_header
+accent "  Installing Omarchy to $target …"
+say ""
 rsync -aHAXx --info=progress2 \
   --exclude=/var/lib/omarchy-cm5/root-grown \
   --exclude=/var/cache/pacman/pkg/'*' \
@@ -114,9 +170,9 @@ rm -f "$mnt/var/lib/omarchy-cm5/root-grown"
 sync
 umount -R "$mnt"
 
+render_header
+accent "  Omarchy is installed on $target."
 say ""
-say "  Installed to $target."
-say "  Remove the USB stick — first boot on internal storage asks for"
-say "  your username and password."
+say "  Remove the USB stick. First boot asks for your username and password."
 say ""
 if confirm "Reboot now?"; then systemctl reboot; else systemctl poweroff; fi
