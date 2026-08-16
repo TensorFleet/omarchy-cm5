@@ -365,6 +365,8 @@ install -Dm755 "$overlay/install/omarchy-cm5-install-to-disk.sh" \
   "$root/usr/local/bin/omarchy-cm5-install-to-disk"
 install -Dm644 "$overlay/installer/disk-partitioning.sh" \
   "$root/usr/local/share/omarchy-cm5/disk-partitioning.sh"
+install -Dm644 "$overlay/installer/pi-disk-layout.sh" \
+  "$root/usr/local/share/omarchy-cm5/pi-disk-layout.sh"
 install -Dm644 "$overlay/systemd/omarchy-cm5-install-to-disk.service" \
   "$root/etc/systemd/system/omarchy-cm5-install-to-disk.service"
 ln -sf /etc/systemd/system/omarchy-cm5-install-to-disk.service \

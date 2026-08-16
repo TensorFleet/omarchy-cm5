@@ -24,5 +24,7 @@ jobs:
         run: bash tests/installer-detection.test.sh
       - name: Partition machinery unit tests (forked from omarchy-iso)
         run: bash tests/partition-helpers.test.sh
+      - name: Pi disk layout unit tests (our adaptation)
+        run: bash tests/installer-partitioning.test.sh
       - name: shellcheck installer + first-boot scripts
         run: shellcheck -x overlay/install/*.sh

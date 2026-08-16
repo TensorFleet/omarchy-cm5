@@ -129,30 +129,15 @@ fi
 lib=${OMARCHY_CM5_LIB:-/usr/local/share/omarchy-cm5}
 # shellcheck source=overlay/installer/disk-partitioning.sh
 source "$lib/disk-partitioning.sh"
+# shellcheck source=overlay/installer/pi-disk-layout.sh
+source "$lib/pi-disk-layout.sh"
 disk_abort_hook() { warn "$1"; rollback_created_parts "$target"; }
 
 newid=$(od -An -N4 -tx4 /dev/urandom | tr -d ' ')
-boot_start=$((2048 * 512))
-boot_end=$((boot_start + 512 * 1024 * 1024))
-disk_end=$(( $(blockdev --getsize64 "$target") - 1024 * 1024 ))
-
-disk_step "clearing signatures on $target" wipefs -af "$target"
-disk_step "writing MBR label" parted --script "$target" mklabel msdos
-create_partition "$target" "$boot_start" "$boot_end" fat32 OMARCHYBOOT ||
-  _disk_abort "creating the boot partition"
-bootnum=$created_partition_number
-bootp=$(partition_path "$target" "$bootnum")
-create_partition "$target" "$boot_end" "$disk_end" ext4 omarchy-root ||
-  _disk_abort "creating the root partition"
-rootnum=$created_partition_number
-rootp=$(partition_path "$target" "$rootnum")
-disk_step "setting boot flag" parted --script "$target" set "$bootnum" boot on
-disk_step "setting disk id 0x$newid" sfdisk --disk-id "$target" "0x$newid"
+partition_target_disk "$target" "$newid"   # sets bootp/rootp/*_partuuid
 partprobe "$target" 2>/dev/null || true
 wait_for_device "$bootp" || _disk_abort "boot partition device never appeared"
 wait_for_device "$rootp" || _disk_abort "root partition device never appeared"
-printf -v boot_partuuid '%s-%02d' "$newid" "$bootnum"
-printf -v root_partuuid '%s-%02d' "$newid" "$rootnum"
 
 disk_step "formatting $bootp" mkfs.vfat -F 32 -n OMARCHYBOOT "$bootp"
 disk_step "formatting $rootp" mkfs.ext4 -qF -L omarchy-root "$rootp"
