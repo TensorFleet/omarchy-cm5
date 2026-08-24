@@ -1,0 +1,10 @@
+# Official ROCKNIX SM8550 image used as the AYN Thor kernel, DTB, module, and
+# firmware source. Keep the release, filename, and digest updated together.
+ROCKNIX_RELEASE=20260801
+ROCKNIX_IMAGE=ROCKNIX-SM8550.aarch64-20260801.img.gz
+ROCKNIX_SHA256=1b62972d65e83ee42ec99eb84b83aee78713d0c767ad3916cddeb93c39001305
+
+# The first partition in the ROCKNIX disk image is the 2 GiB FAT system
+# partition containing KERNEL and SYSTEM. Values are bytes.
+ROCKNIX_FAT_OFFSET=16777216
+ROCKNIX_FAT_LENGTH=2147483648

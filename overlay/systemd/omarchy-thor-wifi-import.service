@@ -1,0 +1,12 @@
+[Unit]
+Description=Import Thor Wi-Fi credentials from the boot partition
+After=NetworkManager.service local-fs.target
+Wants=NetworkManager.service
+ConditionPathExists=/boot/omarchy-thor-wifi
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/omarchy-thor-wifi-import /boot/omarchy-thor-wifi --delete
+
+[Install]
+WantedBy=multi-user.target

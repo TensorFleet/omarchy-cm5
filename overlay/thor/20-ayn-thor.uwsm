@@ -1,0 +1,20 @@
+# Sourced by uwsm for the Hyprland session. Point Aquamarine at the MSM
+# card that owns the DSI panels (card0 is sometimes a dummy).
+for conn in /sys/class/drm/card*-DSI-*; do
+  [ -e "$conn" ] || continue
+  card=${conn#/sys/class/drm/card}
+  card=${card%%-*}
+  export AQ_DRM_DEVICES="/dev/dri/card${card}"
+  export WLR_DRM_DEVICES="/dev/dri/card${card}"
+  break
+done
+export WLR_BACKENDS=drm,libinput
+export WLR_RENDERER=gles2
+# The MSM/FD740 stack advertises Qualcomm compressed (UBWC) modifiers, but
+# scanning those buffers out on the Thor DSI panels produces horizontal color
+# bands once a full-screen Qt Quick surface appears.  Keep both the Aquamarine
+# output swapchains and Hyprland's EGL imports linear.
+export AQ_NO_MODIFIERS=1
+export HYPRLAND_EGL_NO_MODIFIERS=1
+export QT_QPA_PLATFORM=wayland
+export QSG_RHI_BACKEND=opengl

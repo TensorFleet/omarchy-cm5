@@ -1,0 +1,7 @@
+[Desktop Entry]
+Name=Omarchy (Hyprland)
+Comment=Hyprland with Lua config — Thor fallback if the uwsm session never maps
+Exec=/usr/local/bin/omarchy-thor-session
+TryExec=/usr/local/bin/omarchy-thor-session
+Type=Application
+DesktopNames=Hyprland

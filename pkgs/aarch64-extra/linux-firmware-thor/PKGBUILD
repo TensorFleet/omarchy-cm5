@@ -1,0 +1,21 @@
+# Qualcomm / AYN Thor firmware extracted from ROCKNIX SYSTEM.
+pkgname=linux-firmware-thor
+pkgver=20260801
+pkgrel=1
+pkgdesc="AYN Thor (SM8550) firmware: Adreno a740, ath12k WCN7850, ADSP, speakers"
+arch=('any')
+url="https://github.com/ROCKNIX/distribution"
+license=('custom:firmware')
+options=('!strip')
+source=('vendor.tar.zst')
+sha256sums=('SKIP')
+
+package() {
+  local v=$srcdir/vendor
+  install -d "$pkgdir/usr/lib/firmware"
+  cp -a "$v/firmware/." "$pkgdir/usr/lib/firmware/"
+  if [[ -d $v/alsa ]]; then
+    install -d "$pkgdir/usr/share/alsa"
+    cp -a "$v/alsa/." "$pkgdir/usr/share/alsa/"
+  fi
+}

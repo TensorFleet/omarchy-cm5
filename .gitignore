@@ -2,8 +2,17 @@ build/upstream/
 pkgs/repo/
 build/node/
 build/pkgs-out/
+build/pkgs-slim/
+build/published-pkgs/
 build/resolved/
 build/cache/
 build/*.img
 build/*.img.report.txt
 build/*.VERIFICATION.txt
+build/thor-vendor/
+build/thor-boot-update/
+.wifi
+pkgs/aarch64-extra/linux-rocknix-sm8550/vendor/
+pkgs/aarch64-extra/linux-rocknix-sm8550/vendor.tar.zst
+pkgs/aarch64-extra/linux-firmware-thor/vendor/
+pkgs/aarch64-extra/linux-firmware-thor/vendor.tar.zst

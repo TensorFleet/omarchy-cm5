@@ -6,7 +6,8 @@
 #   sudo pkgs/build-in-chroot.sh quickshell-git
 #   sudo pkgs/build-in-chroot.sh cliamp herdr ttfx omacalc omacut omawrite
 #
-# Output: build/pkgs-out/*.pkg.tar.zst (+ CHROOT-BUILT.txt)
+# Package sources are resolved from this repository's aarch64-extra directory
+# first, then from omarchy-pkgs. Output: build/pkgs-out/*.pkg.tar.*.
 set -euo pipefail
 
 here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
@@ -57,10 +58,22 @@ if ! grep -q '^DisableSandbox' "$CHROOT/etc/pacman.conf"; then
   sed -i -e '/^\[options\]/a DisableSandbox' -e '/^DownloadUser/d' "$CHROOT/etc/pacman.conf"
 fi
 
-if ! run id builder &>/dev/null; then
+# A freshly extracted ALARM rootfs has no initialized signing keyring.  It must
+# exist before the first upgrade, otherwise pacman downloads hundreds of MB and
+# then fails with "required key missing from keyring".
+if [[ ! -s $CHROOT/etc/pacman.d/gnupg/pubring.gpg ]]; then
   run pacman-key --init
   run pacman-key --populate archlinuxarm
-  run pacman -Syu --noconfirm
+fi
+
+# Always bring a reused build chroot current before compiling.  This is
+# especially important for quickshell: it links Qt private APIs, whose ABI may
+# change even in a patch release.  A quickshell built against (for example)
+# Qt 6.11.1 will install alongside 6.11.2 but fail at runtime with an undefined
+# Qt_6_PRIVATE_API symbol.
+run pacman -Syu --noconfirm
+
+if ! run id builder &>/dev/null; then
   run pacman -S --noconfirm --needed base-devel git sudo
   run useradd -m builder
   echo 'builder ALL=(ALL) NOPASSWD: ALL' >"$CHROOT/etc/sudoers.d/builder"
@@ -73,14 +86,22 @@ fi
 # qemu-user emulation ("sudo: effective uid is not 0"). Instead: read the
 # PKGBUILD's dependency lists via --printsrcinfo, install them as root
 # (root pacman needs no setuid), then build with makepkg -d.
-touch "$OUT/CHROOT-BUILT.txt"
+: >"$OUT/CHROOT-BUILT.txt"
 for pkg in "$@"; do
   echo "=== building $pkg (qemu chroot) ===" >&2
-  if [[ ! -d $CHROOT/home/builder/omarchy-pkgs/pkgbuilds/$pkg ]]; then
+  builddir=/home/builder/omarchy-pkgs/pkgbuilds/$pkg
+  if [[ -d $here/aarch64-extra/$pkg ]]; then
+    rm -rf "$CHROOT/home/builder/local-pkgbuilds/$pkg"
+    mkdir -p "$CHROOT/home/builder/local-pkgbuilds"
+    cp -a "$here/aarch64-extra/$pkg" "$CHROOT/home/builder/local-pkgbuilds/$pkg"
+    run chown -R builder:builder "/home/builder/local-pkgbuilds/$pkg"
+    builddir=/home/builder/local-pkgbuilds/$pkg
+  fi
+  if [[ ! -d $CHROOT$builddir ]]; then
     echo "FAILED: $pkg (no PKGBUILD)" >>"$OUT/CHROOT-BUILT.txt"; continue
   fi
   mapfile -t deps < <(
-    run sudo -u builder bash -c "cd /home/builder/omarchy-pkgs/pkgbuilds/$pkg && makepkg --printsrcinfo 2>/dev/null" |
+    run sudo -u builder bash -c "cd '$builddir' && makepkg --printsrcinfo 2>/dev/null" |
       awk -F' = ' '$1 ~ /^\t(make|check)?depends(_aarch64)?$/ { sub(/[<>=].*/, "", $2); print $2 }' | sort -u
   )
   if ((${#deps[@]})); then
@@ -97,8 +118,8 @@ for pkg in "$@"; do
   fi
   # -A: some PKGBUILDs declare arch=('x86_64') only by omission (tzupdate);
   # makepkg still stamps the built package with the real CARCH (aarch64).
-  if run sudo -u builder bash -c "cd /home/builder/omarchy-pkgs/pkgbuilds/$pkg && makepkg -d -f -A --noconfirm --skipchecksums --skippgpcheck"; then
-    cp "$CHROOT/home/builder/omarchy-pkgs/pkgbuilds/$pkg"/*.pkg.tar.* "$OUT/" || { echo "FAILED: $pkg (harvest)" >>"$OUT/CHROOT-BUILT.txt"; continue; }
+  if run sudo -u builder bash -c "cd '$builddir' && makepkg -d -f -A --noconfirm --skippgpcheck"; then
+    cp "$CHROOT$builddir"/*.pkg.tar.* "$OUT/" || { echo "FAILED: $pkg (harvest)" >>"$OUT/CHROOT-BUILT.txt"; continue; }
     echo "$pkg" >>"$OUT/CHROOT-BUILT.txt"
   else
     echo "FAILED: $pkg" >>"$OUT/CHROOT-BUILT.txt"

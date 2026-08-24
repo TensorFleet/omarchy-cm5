@@ -41,7 +41,19 @@ scripts directly.
 
 **Also works: macOS on Apple Silicon via Docker Desktop.** The Docker VM is
 a native aarch64 Linux, so this is secretly the best-case host with a
-container wrapped around every stage (verified end-to-end 2026-08):
+container wrapped around every stage (verified end-to-end 2026-08).
+
+For the Thor image, the whole pipeline is one script:
+
+```bash
+bash build/local-thor.sh            # packages + 12G image + verify
+```
+
+The builder image is `build/Dockerfile.builder`. Image lives in the
+`omarchy-thor-image` named volume (osxfs bind-mounts break xattrs and
+loop performance), then copies out to `build/omarchy-thor.img`.
+
+Manual CM5 / per-stage Docker commands:
 
 ```bash
 # stages 1 + 2a: the x86 archlinux container, emulated. pacman 7's seccomp

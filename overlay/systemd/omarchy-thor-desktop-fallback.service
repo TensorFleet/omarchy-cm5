@@ -1,0 +1,12 @@
+[Unit]
+Description=Retry Hyprland directly if the uwsm session never starts
+After=display-manager.service
+Wants=display-manager.service
+ConditionPathExists=!/var/lib/omarchy/provisioning/pending
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/omarchy-thor-desktop-fallback
+
+[Install]
+WantedBy=graphical.target

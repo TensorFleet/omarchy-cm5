@@ -1,0 +1,16 @@
+[Unit]
+Description=Thor USB-C CDC-ECM debug gadget (172.16.42.1)
+After=local-fs.target systemd-modules-load.service ufw.service
+Before=sshd.service
+ConditionPathExists=/sys/class/udc
+StartLimitIntervalSec=0
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/bin/omarchy-thor-usb-gadget
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,12 @@
+[Unit]
+Description=Snapshot SDDM/Hyprland status onto the FAT
+After=display-manager.service
+Wants=display-manager.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/omarchy-thor-desktop-log
+RemainAfterExit=yes
+
+[Install]
+WantedBy=graphical.target

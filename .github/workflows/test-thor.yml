@@ -1,0 +1,44 @@
+name: test-thor
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - build/**
+      - overlay/**
+      - pkgs/aarch64-extra/linux-rocknix-sm8550/**
+      - pkgs/aarch64-extra/linux-firmware-thor/**
+      - pkgs/aarch64-extra/wvkbd/**
+      - pkgs/build-in-chroot.sh
+      - tests/thor-source.test.sh
+      - .github/workflows/build-image-thor.yml
+      - .github/workflows/build-arm-packages.yml
+      - .github/workflows/test-thor.yml
+  push:
+    branches: [main]
+    paths:
+      - build/**
+      - overlay/**
+      - pkgs/aarch64-extra/linux-rocknix-sm8550/**
+      - pkgs/aarch64-extra/linux-firmware-thor/**
+      - pkgs/aarch64-extra/wvkbd/**
+      - pkgs/build-in-chroot.sh
+      - tests/thor-source.test.sh
+      - .github/workflows/build-image-thor.yml
+      - .github/workflows/build-arm-packages.yml
+      - .github/workflows/test-thor.yml
+
+permissions:
+  contents: read
+
+jobs:
+  source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify Thor installer and repair payload
+        run: bash tests/thor-source.test.sh
+      - name: Parse GitHub workflow YAML
+        run: |
+          ruby -e 'require "yaml"; Dir[".github/workflows/*.yml"].each { |f| YAML.parse_file(f) or abort(f) }'

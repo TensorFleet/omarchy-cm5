@@ -1,0 +1,14 @@
+[Unit]
+Description=Thor gamepad as keyboard for first-boot setup
+ConditionPathExists=/var/lib/omarchy/provisioning/pending
+After=systemd-udevd.service local-fs.target
+Before=omarchy-provision-owner.service
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/omarchy-thor-kb
+Restart=on-failure
+RestartSec=1
+
+[Install]
+WantedBy=multi-user.target

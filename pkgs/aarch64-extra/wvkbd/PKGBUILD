@@ -1,0 +1,23 @@
+pkgname=wvkbd
+pkgver=0.20
+pkgrel=1
+pkgdesc="On-screen keyboard for wlroots compositors (mobile international layout)"
+arch=('aarch64')
+url="https://github.com/jjsullivan5196/wvkbd"
+license=('GPL-3.0-or-later')
+depends=('cairo' 'glibc' 'libxkbcommon' 'pango' 'wayland')
+makedepends=('scdoc')
+provides=('wvkbd-mobintl')
+source=("$pkgname-$pkgver.tar.gz::$url/archive/refs/tags/v$pkgver.tar.gz")
+sha256sums=('b5fee580f826190fda94c06267e52e7c09f0fbbec2b02e5d140fe62a10a6c3b0')
+
+build() {
+  make -C "$pkgname-$pkgver" LAYOUT=mobintl PREFIX=/usr MANPREFIX=/usr/share/man
+}
+
+package() {
+  make -C "$pkgname-$pkgver" LAYOUT=mobintl PREFIX=/usr \
+    MANPREFIX=/usr/share/man DESTDIR="$pkgdir" install
+  install -Dm644 "$pkgname-$pkgver/LICENSE" \
+    "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}

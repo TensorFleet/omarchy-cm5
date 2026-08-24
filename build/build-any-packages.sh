@@ -43,8 +43,11 @@ build_dir=/home/builder/build
 sudo -u builder mkdir -p "$build_dir"
 
 git clone --depth 1 https://github.com/omacom-io/omarchy-pkgs "$build_dir/omarchy-pkgs"
+# rev-parse as root before chown: after chown, git refuses the builder-owned repo
+# ("detected dubious ownership") and this line used to abort under set -e.
+rev=$(git -C "$build_dir/omarchy-pkgs" rev-parse --short HEAD)
 chown -R builder "$build_dir"
-echo "omarchy-pkgs @ $(git -C "$build_dir/omarchy-pkgs" rev-parse --short HEAD)" >"$OUT/BUILT.txt"
+echo "omarchy-pkgs @ $rev" >"$OUT/BUILT.txt"
 
 alarm_has() { grep -qxF "$1" "$ALARM_NAMES"; }
 

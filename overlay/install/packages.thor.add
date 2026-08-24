@@ -1,0 +1,22 @@
+# AYN Thor additions on top of upstream's base list. Boot-chain packages
+# (ROCKNIX kernel + Thor firmware) are installed explicitly in mkimage.sh.
+
+# Adreno 740: GLES via mesa/freedreno, Vulkan via Turnip
+mesa
+vulkan-freedreno
+
+# ISO bootstrap assumed these; our builder must add them.
+sudo
+base-devel
+
+# grow-root uses util-linux + e2fsprogs (already in base); parted/rsync
+# stay available for manual disk work. No install-to-internal on Thor.
+rsync
+parted
+
+# SSHing in from a Ghostty terminal sets TERM=xterm-ghostty.
+openssh
+ghostty-terminfo
+
+# Login OSK on the bottom DSI (SDDM greeter has no QWERTY).
+wvkbd

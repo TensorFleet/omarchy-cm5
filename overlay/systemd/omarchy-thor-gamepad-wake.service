@@ -1,0 +1,12 @@
+[Unit]
+Description=Wake Omarchy screensaver from AYN Thor gamepad buttons
+After=systemd-udevd.service systemd-modules-load.service local-fs.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/omarchy-thor-gamepad-wake
+Restart=always
+RestartSec=1
+
+[Install]
+WantedBy=multi-user.target

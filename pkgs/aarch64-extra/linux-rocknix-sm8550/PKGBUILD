@@ -1,0 +1,22 @@
+# ROCKNIX SM8550 kernel 7.1.2 + modules, packaged for an Arch root.
+# Blobs come from extract.sh (vendor/ populated from a ROCKNIX SYSTEM squashfs).
+pkgname=linux-rocknix-sm8550
+pkgver=7.1.2
+pkgrel=1
+pkgdesc="ROCKNIX mainline SM8550 kernel modules (AYN Thor / qcs8550-ayn-thor)"
+arch=('aarch64')
+url="https://github.com/ROCKNIX/distribution"
+license=('GPL-2.0-only')
+options=('!strip')
+depends=()
+optdepends=('linux-firmware-thor: Adreno / ath12k / Thor DSP firmware')
+source=('vendor.tar.zst')
+sha256sums=('SKIP')
+
+package() {
+  local v=$srcdir/vendor
+  install -d "$pkgdir/usr/lib/modules"
+  cp -a "$v/modules/7.1.2" "$pkgdir/usr/lib/modules/"
+  install -Dm644 "$v/KERNEL" "$pkgdir/usr/lib/linux-rocknix-sm8550/KERNEL"
+  install -Dm644 "$v/KERNEL.txt" "$pkgdir/usr/share/doc/$pkgname/KERNEL.txt" 2>/dev/null || true
+}

@@ -1,0 +1,12 @@
+[Unit]
+Description=Recover AYN Thor top DSI panel after DPU timeout
+After=systemd-journald.service
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/omarchy-thor-display-recover
+Restart=always
+RestartSec=1
+
+[Install]
+WantedBy=multi-user.target

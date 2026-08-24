@@ -51,7 +51,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           mkdir -p build/pkgs-out
-          gh release download aarch64-pkgs -p '*.pkg.tar.zst' -D build/pkgs-out \
+          gh release download aarch64-pkgs -p '*.pkg.tar.*' -D build/pkgs-out \
             -R "$GITHUB_REPOSITORY" 2>/dev/null && ls -la build/pkgs-out ||
             echo "no aarch64-pkgs release yet — image gets the 'any' packages only"
 
