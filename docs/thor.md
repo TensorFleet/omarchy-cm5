@@ -55,9 +55,13 @@ On this Mac (Apple Silicon + Docker Desktop), from the `omarchy-cm5` repo:
 
 ```
 bash build/local-thor.sh            # packages + 12G image + verify
-bash build/local-thor.sh packages   # omarchy 'any' pkgs only
+bash build/local-thor.sh packages   # includes Qt-matched aarch64 Quickshell
 bash build/local-thor.sh image      # mkimage + verify (needs build/pkgs-out)
 ```
+
+The emulated Quickshell rebuild is deliberately slow (about 2 h 40 m on a
+four-core x86 runner) because its Qt private ABI must match the image exactly.
+Re-run the package stage after ALARM Qt updates.
 
 The vendor fetch is reproducible: `build/thor-vendor.lock` pins the official
 ROCKNIX SM8550 release, filename, SHA-256, and FAT partition geometry. Local

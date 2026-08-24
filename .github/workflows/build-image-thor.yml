@@ -81,12 +81,13 @@ jobs:
             -R "$GITHUB_REPOSITORY" 2>/dev/null && ls -la build/pkgs-out ||
             echo "no aarch64-pkgs release yet — image gets the 'any' packages only"
 
-      - name: Build required Thor on-screen keyboard
+      - name: Build required Thor aarch64 desktop packages
         run: |
           sudo CHROOT=/mnt/omarchy-wvkbd OUT="$PWD/build/pkgs-out" \
-            bash pkgs/build-in-chroot.sh wvkbd
+            bash pkgs/build-in-chroot.sh wvkbd quickshell-git
           sudo chown -R "$(id -u):$(id -g)" build/pkgs-out
           test -n "$(find build/pkgs-out -maxdepth 1 -name 'wvkbd-*.pkg.tar.*' -print -quit)"
+          test -n "$(find build/pkgs-out -maxdepth 1 -name 'quickshell-git-*.pkg.tar.*' -print -quit)"
 
       - name: Build omarchy 'any' packages (Arch container)
         run: |

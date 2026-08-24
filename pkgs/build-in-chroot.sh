@@ -116,6 +116,23 @@ for pkg in "$@"; do
       done
     fi
   fi
+  # Quickshell links Qt private symbols, but its upstream VCS package version
+  # does not change when ALARM updates Qt. Encode the build Qt ABI in pkgrel so
+  # the rolling release can retain/refer to a rebuilt package instead of
+  # silently keeping an incompatible same-named asset.
+  if [[ $pkg == quickshell-git ]]; then
+    qt_version=$(run pacman -Q qt6-base | awk '{print $2}')
+    qt_core=${qt_version%%-*}
+    IFS=. read -r qt_major qt_minor qt_patch <<<"$qt_core"
+    [[ $qt_major =~ ^[0-9]+$ && $qt_minor =~ ^[0-9]+$ && $qt_patch =~ ^[0-9]+$ ]] || {
+      echo "could not derive Quickshell pkgrel from Qt version: $qt_version" >&2
+      exit 1
+    }
+    printf -v qt_abi_rel '%d%03d%03d' "$qt_major" "$qt_minor" "$qt_patch"
+    run sudo -u builder sed -i -E \
+      "s/^pkgrel=.*/pkgrel=1.$qt_abi_rel/" "$builddir/PKGBUILD"
+    echo "quickshell Qt ABI: $qt_version (pkgrel 1.$qt_abi_rel)" >&2
+  fi
   # -A: some PKGBUILDs declare arch=('x86_64') only by omission (tzupdate);
   # makepkg still stamps the built package with the real CARCH (aarch64).
   if run sudo -u builder bash -c "cd '$builddir' && makepkg -d -f -A --noconfirm --skippgpcheck"; then

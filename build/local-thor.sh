@@ -44,22 +44,6 @@ fetch_prereqs() {
       -R TensorFleet/omarchy-cm5 || true
     cp -n "$published"/*.pkg.tar.* "$repo/build/pkgs-out/" 2>/dev/null || true
   fi
-  if ! ls "$repo"/build/pkgs-out/wvkbd-*.pkg.tar.* >/dev/null 2>&1; then
-    echo "=== building required Thor on-screen keyboard ==="
-    ensure_builder
-    docker run --rm --privileged -v /dev:/dev -v "$repo:/work" \
-      -v omarchy-thor-wvkbd:/pkgroot "$builder" env \
-      CHROOT=/pkgroot OUT=/work/build/pkgs-out \
-      bash /work/pkgs/build-in-chroot.sh wvkbd
-    ls "$repo"/build/pkgs-out/wvkbd-*.pkg.tar.* >/dev/null 2>&1 || {
-      echo "failed to build required wvkbd aarch64 package" >&2
-      exit 1
-    }
-  fi
-  ls "$repo"/build/pkgs-out/quickshell-git-*.pkg.tar.* >/dev/null 2>&1 || {
-    echo "missing quickshell-git aarch64 package; run the package workflow first" >&2
-    exit 1
-  }
   if ! ls "$repo"/build/node/node-v*-linux-arm64.tar.gz >/dev/null 2>&1; then
     file=$(curl -fsSL https://nodejs.org/dist/latest-v22.x/ |
       grep -o 'node-v[0-9.]*-linux-arm64\.tar\.gz' | head -1)
@@ -78,6 +62,12 @@ stage_packages() {
   docker run --rm --platform linux/amd64 -v "$repo:/work" archlinux/archlinux:latest \
     bash -c "sed -i -e '/^\[options\]/a DisableSandbox' -e '/^DownloadUser/d' /etc/pacman.conf \
              && bash /work/pkgs/repack-bin.sh" || echo "repack-bin skipped/failed (non-fatal)"
+  echo "=== stage 2b: Qt-ABI-matched Thor desktop packages ==="
+  ensure_builder
+  docker run --rm --privileged -v /dev:/dev -v "$repo:/work" \
+    -v omarchy-thor-wvkbd:/pkgroot "$builder" env \
+    CHROOT=/pkgroot OUT=/work/build/pkgs-out \
+    bash /work/pkgs/build-in-chroot.sh wvkbd quickshell-git
 }
 
 # Keep one newest non-debug package per name so mkimage doesn't copy 2 GB of
@@ -111,6 +101,14 @@ PY
 
 stage_image() {
   echo "=== stage 3: BOARD=ayn-thor image ==="
+  ls "$repo"/build/pkgs-out/wvkbd-*.pkg.tar.* >/dev/null 2>&1 || {
+    echo "missing wvkbd aarch64 package; run '$0 packages' first" >&2
+    exit 1
+  }
+  ls "$repo"/build/pkgs-out/quickshell-git-*.pkg.tar.* >/dev/null 2>&1 || {
+    echo "missing quickshell-git aarch64 package; run '$0 packages' first" >&2
+    exit 1
+  }
   ensure_builder
   slim_pkgs
   mkdir -p "$repo/build/cache/thor-pacman"

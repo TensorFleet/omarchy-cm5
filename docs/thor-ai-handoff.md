@@ -80,10 +80,13 @@ so they disappear underneath the later mount. Use `thor-apply-storage.sh`.
 Quickshell links Qt private ABI. The earlier package was built against a
 different Qt patch release, so it installed successfully but failed before the
 shell rendered, leaving a black desktop and movable pointer. The package build
-now upgrades the chroot before compiling; `mkimage.sh` requires
-`quickshell-git` and runs `quickshell --version`; `verify-image.sh` treats the
-shell as a hard Thor requirement. FAT repair payloads may carry a compressed,
-hash-checked emergency binary built against the image’s Qt.
+now upgrades the chroot before compiling and encodes the Qt version into the
+package release number. Both local and release image pipelines rebuild
+Quickshell against the current ALARM Qt rather than trusting a possibly stale
+rolling asset. `mkimage.sh` requires `quickshell-git` and runs
+`quickshell --version`; `verify-image.sh` treats the shell as a hard Thor
+requirement. FAT repair payloads may carry a compressed, hash-checked emergency
+binary built against the image’s Qt.
 
 ### Dual displays, rotation, and touch
 
@@ -187,7 +190,8 @@ git diff --check
 
 The GitHub `test-thor` workflow performs fast source checks. The
 `build-image-thor` workflow independently fetches the checksum-pinned vendor
-image, builds the required keyboard package, retries transient ALARM mirror
-failures, builds and verifies the complete image, compresses/splits it, writes
-`SHA256SUMS`, and publishes a `thor-build-*` release. Do not weaken hard
-verification checks to make a partial desktop publish.
+image, rebuilds the required keyboard and Qt-ABI-matched Quickshell packages,
+retries transient ALARM mirror failures, builds and verifies the complete
+image, compresses/splits it, writes `SHA256SUMS`, and publishes a
+`thor-build-*` release. Do not weaken hard verification checks to make a
+partial desktop publish.

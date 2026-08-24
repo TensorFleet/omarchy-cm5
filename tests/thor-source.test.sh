@@ -76,8 +76,10 @@ grep -Fq "'*.pkg.tar.*'" .github/workflows/build-image-thor.yml ||
   fail "Thor CI does not download xz-packaged Quickshell builds"
 [[ -f pkgs/aarch64-extra/wvkbd/PKGBUILD ]] ||
   fail "wvkbd is not reproducibly packaged"
-grep -Fq 'build-in-chroot.sh wvkbd' .github/workflows/build-image-thor.yml ||
-  fail "Thor CI does not build its required on-screen keyboard"
+grep -Fq 'build-in-chroot.sh wvkbd quickshell-git' .github/workflows/build-image-thor.yml ||
+  fail "Thor CI does not rebuild its required OSK and Qt-matched desktop shell"
+grep -Fq 'quickshell Qt ABI:' pkgs/build-in-chroot.sh ||
+  fail "Quickshell package versions do not encode their Qt private ABI"
 grep -Fq "test -x \"\$mnt/usr/bin/wvkbd-mobintl\"" build/verify-image.sh ||
   fail "image verifier does not require the packaged keyboard binary"
 pass "desktop and recovery invariants"

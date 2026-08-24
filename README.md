@@ -106,6 +106,11 @@ bash build/local-thor.sh packages   # package stage only
 bash build/local-thor.sh image      # image stage using build/pkgs-out
 ```
 
+The package stage rebuilds both `wvkbd` and Quickshell in an updated aarch64
+chroot. Quickshell consumes Qt private API, so this is intentionally required;
+under emulation it can take roughly three hours. Run `packages` again whenever
+ALARM updates Qt, then run `image` to reuse those ABI-matched packages.
+
 The build downloads the pinned ROCKNIX SM8550 image, verifies its SHA-256, and
 extracts only the Thor kernel/modules/firmware payload. The large image is built
 inside the `omarchy-thor-image` Docker volume and copied to
