@@ -84,6 +84,8 @@ grep -Fq 'REQUIRE_ALL=1' .github/workflows/build-image-thor.yml ||
   fail "Thor release CI tolerates required package build failures"
 grep -Fq 'runs-on: ubuntu-24.04-arm' .github/workflows/build-image-thor.yml ||
   fail "Thor release CI does not use a native arm64 runner"
+grep -Fq 'arch-chroot /mnt/omarchy-wvkbd' .github/workflows/build-image-thor.yml ||
+  fail "Thor release CI does not build Omarchy packages in its native ALARM chroot"
 grep -Fq "test -x \"\$mnt/usr/bin/wvkbd-mobintl\"" build/verify-image.sh ||
   fail "image verifier does not require the packaged keyboard binary"
 pass "desktop and recovery invariants"

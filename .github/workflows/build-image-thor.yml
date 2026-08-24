@@ -88,10 +88,13 @@ jobs:
           test -n "$(find build/pkgs-out -maxdepth 1 -name 'wvkbd-*.pkg.tar.*' -print -quit)"
           test -n "$(find build/pkgs-out -maxdepth 1 -name 'quickshell-git-*.pkg.tar.*' -print -quit)"
 
-      - name: Build omarchy 'any' packages (Arch container)
+      - name: Build omarchy 'any' packages (native ALARM chroot)
         run: |
-          docker run --rm -v "$PWD:/work" archlinux/archlinux:latest \
+          sudo mkdir -p /mnt/omarchy-wvkbd/work
+          sudo mount --bind "$PWD" /mnt/omarchy-wvkbd/work
+          sudo arch-chroot /mnt/omarchy-wvkbd env WORK=/work \
             bash /work/build/build-any-packages.sh
+          sudo umount /mnt/omarchy-wvkbd/work
           sudo chown -R "$(id -u):$(id -g)" build/pkgs-out
           ls -la build/pkgs-out
 
