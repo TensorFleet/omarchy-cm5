@@ -13,6 +13,7 @@ set -euo pipefail
 here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 OUT=${OUT:-$here/../build/pkgs-out}
 CHROOT=${CHROOT:-/mnt/omarchy-pkgbuild}
+REQUIRE_ALL=${REQUIRE_ALL:-0}
 mkdir -p "$OUT"
 
 (($#)) || { echo "usage: build-in-chroot.sh <pkg> [pkg…]" >&2; exit 1; }
@@ -87,6 +88,7 @@ fi
 # PKGBUILD's dependency lists via --printsrcinfo, install them as root
 # (root pacman needs no setuid), then build with makepkg -d.
 : >"$OUT/CHROOT-BUILT.txt"
+build_failures=0
 for pkg in "$@"; do
   echo "=== building $pkg (qemu chroot) ===" >&2
   builddir=/home/builder/omarchy-pkgs/pkgbuilds/$pkg
@@ -98,7 +100,9 @@ for pkg in "$@"; do
     builddir=/home/builder/local-pkgbuilds/$pkg
   fi
   if [[ ! -d $CHROOT$builddir ]]; then
-    echo "FAILED: $pkg (no PKGBUILD)" >>"$OUT/CHROOT-BUILT.txt"; continue
+    echo "FAILED: $pkg (no PKGBUILD)" >>"$OUT/CHROOT-BUILT.txt"
+    build_failures=$((build_failures + 1))
+    continue
   fi
   mapfile -t deps < <(
     run sudo -u builder bash -c "cd '$builddir' && makepkg --printsrcinfo 2>/dev/null" |
@@ -136,12 +140,21 @@ for pkg in "$@"; do
   # -A: some PKGBUILDs declare arch=('x86_64') only by omission (tzupdate);
   # makepkg still stamps the built package with the real CARCH (aarch64).
   if run sudo -u builder bash -c "cd '$builddir' && makepkg -d -f -A --noconfirm --skippgpcheck"; then
-    cp "$CHROOT$builddir"/*.pkg.tar.* "$OUT/" || { echo "FAILED: $pkg (harvest)" >>"$OUT/CHROOT-BUILT.txt"; continue; }
+    if ! cp "$CHROOT$builddir"/*.pkg.tar.* "$OUT/"; then
+      echo "FAILED: $pkg (harvest)" >>"$OUT/CHROOT-BUILT.txt"
+      build_failures=$((build_failures + 1))
+      continue
+    fi
     echo "$pkg" >>"$OUT/CHROOT-BUILT.txt"
   else
     echo "FAILED: $pkg" >>"$OUT/CHROOT-BUILT.txt"
+    build_failures=$((build_failures + 1))
   fi
 done
 
 cat "$OUT/CHROOT-BUILT.txt"
 ls -la "$OUT"
+if (( REQUIRE_ALL && build_failures )); then
+  echo "$build_failures required package build(s) failed" >&2
+  exit 1
+fi

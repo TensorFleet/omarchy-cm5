@@ -66,7 +66,7 @@ stage_packages() {
   ensure_builder
   docker run --rm --privileged -v /dev:/dev -v "$repo:/work" \
     -v omarchy-thor-wvkbd:/pkgroot "$builder" env \
-    CHROOT=/pkgroot OUT=/work/build/pkgs-out \
+    CHROOT=/pkgroot OUT=/work/build/pkgs-out REQUIRE_ALL=1 \
     bash /work/pkgs/build-in-chroot.sh wvkbd quickshell-git
 }
 

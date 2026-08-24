@@ -16,7 +16,7 @@ permissions:
 
 jobs:
   repack-bin:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
@@ -41,7 +41,7 @@ jobs:
           done
 
   small-tools:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
     timeout-minutes: 350
     steps:
       - uses: actions/checkout@v4
@@ -54,8 +54,8 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-            qemu-user-static arch-install-scripts libarchive-tools
-          test -e /proc/sys/fs/binfmt_misc/qemu-aarch64
+            arch-install-scripts libarchive-tools
+          test "$(uname -m)" = aarch64
       - name: Build Go/Rust/Qt tools in ALARM chroot
         run: |
           sudo CHROOT=/mnt/omarchy-pkgbuild OUT="$PWD/build/pkgs-out" \
@@ -78,7 +78,7 @@ jobs:
           gh release upload aarch64-pkgs build/pkgs-out/CHROOT-BUILT.txt --clobber || true
 
   quickshell:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
     timeout-minutes: 350
     steps:
       - uses: actions/checkout@v4
@@ -91,11 +91,11 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-            qemu-user-static arch-install-scripts libarchive-tools
-          test -e /proc/sys/fs/binfmt_misc/qemu-aarch64
+            arch-install-scripts libarchive-tools
+          test "$(uname -m)" = aarch64
       - name: Build quickshell-git in ALARM chroot
         run: |
-          sudo CHROOT=/mnt/omarchy-quickshell OUT="$PWD/build/pkgs-out" \
+          sudo CHROOT=/mnt/omarchy-quickshell OUT="$PWD/build/pkgs-out" REQUIRE_ALL=1 \
             bash pkgs/build-in-chroot.sh quickshell-git
           sudo chown -R "$(id -u):$(id -g)" build/pkgs-out
       - name: Publish to aarch64-pkgs release

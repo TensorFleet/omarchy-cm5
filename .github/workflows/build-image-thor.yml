@@ -28,7 +28,7 @@ permissions:
 
 jobs:
   image:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04-arm
     timeout-minutes: 350
     steps:
       - uses: actions/checkout@v4
@@ -46,10 +46,9 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-            qemu-user-static arch-install-scripts libarchive-tools \
+            arch-install-scripts libarchive-tools \
             dosfstools parted file squashfs-tools mtools zstd python3
-          test -e /proc/sys/fs/binfmt_misc/qemu-aarch64
-          grep -q flags:.*F /proc/sys/fs/binfmt_misc/qemu-aarch64
+          test "$(uname -m)" = aarch64
 
       - name: Cache ROCKNIX vendor extract
         id: vendor-cache
@@ -83,7 +82,7 @@ jobs:
 
       - name: Build required Thor aarch64 desktop packages
         run: |
-          sudo CHROOT=/mnt/omarchy-wvkbd OUT="$PWD/build/pkgs-out" \
+          sudo CHROOT=/mnt/omarchy-wvkbd OUT="$PWD/build/pkgs-out" REQUIRE_ALL=1 \
             bash pkgs/build-in-chroot.sh wvkbd quickshell-git
           sudo chown -R "$(id -u):$(id -g)" build/pkgs-out
           test -n "$(find build/pkgs-out -maxdepth 1 -name 'wvkbd-*.pkg.tar.*' -print -quit)"

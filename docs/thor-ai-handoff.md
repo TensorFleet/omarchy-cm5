@@ -191,7 +191,8 @@ git diff --check
 The GitHub `test-thor` workflow performs fast source checks. The
 `build-image-thor` workflow independently fetches the checksum-pinned vendor
 image, rebuilds the required keyboard and Qt-ABI-matched Quickshell packages,
-retries transient ALARM mirror failures, builds and verifies the complete
-image, compresses/splits it, writes `SHA256SUMS`, and publishes a
-`thor-build-*` release. Do not weaken hard verification checks to make a
-partial desktop publish.
+on GitHub's native `ubuntu-24.04-arm` runner, retries transient ALARM mirror
+failures, builds and verifies the complete image, compresses/splits it, writes
+`SHA256SUMS`, and publishes a `thor-build-*` release. Required package failures
+are fatal, so a stale rolling asset cannot mask a failed rebuild. Do not weaken
+hard verification checks to make a partial desktop publish.

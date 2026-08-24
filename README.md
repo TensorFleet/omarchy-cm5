@@ -142,9 +142,10 @@ bash build/update-thor-fat.sh diskN   # macOS; validates a small ROCKNIX disk
   and parity between fresh-image and FAT-repair payloads.
 - `build-arm-packages` maintains the rolling `aarch64-pkgs` pacman repository,
   including an ABI-current Quickshell build.
-- `build-image-thor` downloads and verifies the pinned ROCKNIX source, builds a
-  12 GB image, runs hard image assertions, compresses/splits it, creates
-  checksums, and publishes a `thor-build-*` GitHub release.
+- `build-image-thor` downloads and verifies the pinned ROCKNIX source, rebuilds
+  Qt-sensitive packages on a native arm64 runner, builds a 12 GB image, runs
+  hard image assertions, compresses/splits it, creates checksums, and publishes
+  a `thor-build-*` GitHub release.
 - `build-image` continues to build and release the CM5 image.
 
 The Thor image build fails rather than publishing a partial desktop if
