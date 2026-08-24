@@ -20,7 +20,7 @@
 #
 # Inputs:  /work/build/resolved/alarm-names.txt   (from resolve-packages.sh)
 #          /work/upstream.lock                     (pins basecamp/omarchy ref)
-# Output:  /work/build/pkgs-out/*.pkg.tar.zst (+ BUILT.txt, SHIMMED.txt)
+# Output:  /work/build/pkgs-out/*.pkg.tar.* (+ BUILT.txt, SHIMMED.txt)
 set -euo pipefail
 
 WORK=${WORK:-/work}
@@ -60,7 +60,7 @@ build_one() {
   for mutate in "$@"; do sudo -u builder bash -c "cd '$dir' && $mutate"; done
   (cd "$dir" && sudo -u builder env OMARCHY_REF="$OMARCHY_REF" \
     makepkg -d -f --skipchecksums --skippgpcheck --noconfirm) || return 1
-  cp "$dir"/*.pkg.tar.zst "$OUT/"
+  cp "$dir"/*.pkg.tar.* "$OUT/"
   echo "$name" >>"$OUT/BUILT.txt"
 }
 
@@ -89,12 +89,12 @@ done
 # unused (firmware boots the kernel); anything else that lands here is a real
 # gap and is reported loudly.
 mapfile -t deps < <(
-  for f in "$OUT"/*.pkg.tar.zst; do
+  for f in "$OUT"/*.pkg.tar.*; do
     bsdtar -xOf "$f" .PKGINFO | awk -F' = ' '$1=="depend"{sub(/[<>=].*/,"",$2); print $2}'
   done | sort -u
 )
 mapfile -t built_names < <(
-  for f in "$OUT"/*.pkg.tar.zst; do
+  for f in "$OUT"/*.pkg.tar.*; do
     bsdtar -xOf "$f" .PKGINFO | awk -F' = ' '$1=="pkgname"{print $2}'
   done | sort -u
 )
@@ -126,7 +126,7 @@ provides=($provides)
 package() { :; }
 EOF
   (cd "$shim_dir" && sudo -u builder makepkg -d -f --noconfirm)
-  cp "$shim_dir"/*.pkg.tar.zst "$OUT/"
+  cp "$shim_dir"/*.pkg.tar.* "$OUT/"
   echo "omarchy-cm5-shims" >>"$OUT/BUILT.txt"
 fi
 

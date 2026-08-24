@@ -86,6 +86,8 @@ grep -Fq 'runs-on: ubuntu-24.04-arm' .github/workflows/build-image-thor.yml ||
   fail "Thor release CI does not use a native arm64 runner"
 grep -Fq 'arch-chroot /mnt/omarchy-wvkbd' .github/workflows/build-image-thor.yml ||
   fail "Thor release CI does not build Omarchy packages in its native ALARM chroot"
+! grep -Fq '*.pkg.tar.zst' build/build-any-packages.sh ||
+  fail "Omarchy any-package builder is hard-coded to Arch's zstd PKGEXT"
 grep -Fq "test -x \"\$mnt/usr/bin/wvkbd-mobintl\"" build/verify-image.sh ||
   fail "image verifier does not require the packaged keyboard binary"
 pass "desktop and recovery invariants"
