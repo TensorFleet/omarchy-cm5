@@ -49,7 +49,7 @@ fi
 
 wait_usb0() {
   local n
-  for n in {1..100}; do
+  for ((n = 0; n < 100; n++)); do
     [[ -e /sys/class/net/usb0 ]] && return 0
     sleep 0.1
   done
