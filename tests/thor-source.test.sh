@@ -68,6 +68,10 @@ pass "dual-panel layout"
 
 grep -Fq 'quickshell-git omarchy-keyring' build/mkimage.sh ||
   fail "Quickshell is not a required Omarchy core package"
+grep -Fxq 'quickshell' overlay/install/packages.skip ||
+  fail "stock quickshell is not skipped in favor of ABI-matched quickshell-git"
+grep -Fq 'mise-bin=mise' build/mkimage.sh ||
+  fail "image builder does not map upstream mise-bin to the aarch64 mise repack"
 grep -Fq 'Thor OSK binary' build/verify-image.sh ||
   fail "image verifier does not require the OSK"
 grep -Fq 'Thor DSI recovery enabled' build/verify-image.sh ||
