@@ -23,3 +23,9 @@ hyprland-preview-share-picker
 
 # x86-centric encoder pipeline (NVENC/VAAPI); no v3d support
 gpu-screen-recorder
+
+# Stock packaged quickshell from the quattro base list (switched from
+# quickshell-git in 2c593dbb). We still rebuild quickshell-git against the
+# image's Qt private ABI; that package provides=quickshell so the omarchy
+# runtime depend is satisfied without shipping ALARM's unmatched binary.
+quickshell
