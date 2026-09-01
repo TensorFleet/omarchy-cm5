@@ -1,7 +1,7 @@
 # aarch64 repack of mise (jdx/mise) from upstream's linux-arm64 release.
-# omarchy's base list wants `mise` (omarchy-default-agent installs the coding
-# agent through it); Arch packages it for x86_64 only and ALARM not at all,
-# but upstream ships arm64 binaries.
+# Quattro's base list now asks for `mise-bin` (262d6f06); Arch packages it
+# for x86_64 only and ALARM not at all, but upstream ships arm64 binaries.
+# We keep the package name `mise` and provide mise-bin so either depend works.
 pkgname=mise
 pkgver=2026.8.6
 pkgrel=1
@@ -9,7 +9,7 @@ pkgdesc="The front-end to your dev env (polyglot runtime/tool version manager)"
 arch=('aarch64')
 url="https://mise.jdx.dev"
 license=('MIT')
-provides=('mise')
+provides=('mise' 'mise-bin')
 conflicts=('mise-bin')
 source=("mise-v$pkgver-linux-arm64.tar.gz::https://github.com/jdx/mise/releases/download/v$pkgver/mise-v$pkgver-linux-arm64.tar.gz")
 sha256sums=('b92744ceb9a01f0bb198bfcf2ba49c36918c9e4353a34be50f23d5b6e93c28ee')
