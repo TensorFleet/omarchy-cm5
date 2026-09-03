@@ -1,8 +1,11 @@
 # Pinned upstream Omarchy checkout used by build/fetch-upstream.sh.
 # Bump deliberately: Quattro is alpha and moves fast.
-# 144f4d1 is the commit omarchy-pkgs cut 4.0.0rc3 from — the omarchy and
-# omarchy-settings packages the image builder builds MUST match this ref.
+# f99d33a8 is quattro tip (2026-09-02). The tree's version file is still
+# 4.0.0.alpha. omarchy-pkgs 4.0.1 / 4.0.2 and tags v4.0.1 / v4.0.2 diverged
+# from this branch, so OMARCHY_VERSION stays 4.0.0rc3 until quattro itself
+# cuts a newer release. The omarchy and omarchy-settings packages the image
+# builder builds MUST match this ref.
 OMARCHY_REPO=https://github.com/basecamp/omarchy
 OMARCHY_BRANCH=quattro
-OMARCHY_REF=144f4d1e31d6ddc2cba5dfd69278cabf02bafd05
+OMARCHY_REF=f99d33a8ddee7b36509a71a6d20d5d23355ce8b1
 OMARCHY_VERSION=4.0.0rc3

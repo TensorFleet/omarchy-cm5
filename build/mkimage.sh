@@ -239,7 +239,8 @@ mapfile -t requested < <(
 # Prefer the -bin repacks when their aarch64 builds are in the repo
 # (chromium: omacom's patched build; localsend: upstream's arm64 release —
 # the base list asks for the plain names, which don't exist on ALARM).
-for sub in chromium=omarchy-chromium-bin localsend=localsend-bin; do
+# quattro now asks for mise-bin; we ship the same arm64 binary as `mise`.
+for sub in chromium=omarchy-chromium-bin localsend=localsend-bin mise-bin=mise; do
   from=${sub%%=*} to=${sub#*=}
   if pkg_available "$to"; then
     for i in "${!requested[@]}"; do
