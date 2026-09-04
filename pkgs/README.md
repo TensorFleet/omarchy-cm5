@@ -12,8 +12,8 @@ repo at image-build time.
 | Class | Packages | How |
 |---|---|---|
 | `arch=('any')` runtime | `omarchy`, `omarchy-settings`, `omarchy-nvim`, `omarchy-keyring`, fonts, `ufw-docker`, `yaru-icon-theme`, `tobi-try`, `tzupdate` | `build/build-any-packages.sh` — built from official PKGBUILDs in an x86 Arch container (file-copy packaging, arch-independent), pinned to `upstream.lock`'s commit |
-| upstream ships aarch64 binaries | `omarchy-chromium-bin` (their patched Chromium!), `aether`, `localsend-bin` | `pkgs/repack-bin.sh` — makepkg repack with CARCH=aarch64, no compilation |
-| compiled, PKGBUILD already declares aarch64 | `quickshell-git` (the bar/shell — the critical one), `cliamp` (Go), `herdr` (Rust), `ttfx` (Rust), `omacalc`/`omacut`/`omawrite` (Qt6/C++) | `pkgs/build-in-chroot.sh` — real `makepkg -s` inside a qemu-emulated ALARM aarch64 chroot |
+| compiled, PKGBUILD already declares aarch64 | `quickshell-git` (Qt-ABI-matched rebuild; upstream 4.0.2 base list asks for packaged `quickshell`, which ALARM also ships), `cliamp` (Go), `herdr` (Rust), `ttfx` (Rust), `omacalc`/`omacut`/`omawrite` (Qt6/C++) | `pkgs/build-in-chroot.sh` — real `makepkg -s` inside a qemu-emulated ALARM aarch64 chroot |
+| upstream ships aarch64 binaries | `omarchy-chromium-bin` (their patched Chromium!), `aether`, `localsend-bin`, `mise-bin` | `pkgs/repack-bin.sh` — makepkg repack with CARCH=aarch64, no compilation |
 | x86-only upstream | `tensaku`, `hyprland-preview-share-picker`, `obsidian`, `pinta`, `asdcontrol`, `gpu-screen-recorder` | skipped via `overlay/install/packages.skip`; revisit individually |
 | Thor boot blobs | `linux-rocknix-sm8550`, `linux-firmware-thor` | `pkgs/aarch64-extra/.../extract.sh` from a ROCKNIX FAT/SYSTEM image; used only when `BOARD=ayn-thor` |
 

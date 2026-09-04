@@ -239,7 +239,9 @@ mapfile -t requested < <(
 # Prefer the -bin repacks when their aarch64 builds are in the repo
 # (chromium: omacom's patched build; localsend: upstream's arm64 release —
 # the base list asks for the plain names, which don't exist on ALARM).
-for sub in chromium=omarchy-chromium-bin localsend=localsend-bin; do
+# Upstream 4.0.2 asks for packaged `quickshell`; prefer our Qt-ABI-matched
+# quickshell-git rebuild when it is in the local pool (provides=quickshell).
+for sub in chromium=omarchy-chromium-bin localsend=localsend-bin quickshell=quickshell-git; do
   from=${sub%%=*} to=${sub#*=}
   if pkg_available "$to"; then
     for i in "${!requested[@]}"; do
@@ -258,10 +260,19 @@ for p in "${missing[@]}"; do note "  MISSING: $p"; done
 pacman_retry -S --noconfirm --ask 4 --needed "${available[@]}"
 
 # omarchy runtime + settings (built as arch=any, or from the aarch64 repo).
-  # A Thor image without the real Quickshell package boots to a movable pointer
-  # on a black background. Require it as part of the desktop, and install it
-  # before Omarchy so pacman cannot satisfy the dependency with a provider shim.
-  omarchy_core=(quickshell-git omarchy-keyring omarchy-settings omarchy-nvim omarchy)
+# A Thor image without the real Quickshell package boots to a movable pointer
+# on a black background. Require it as part of the desktop, and install it
+# before Omarchy so pacman cannot satisfy the dependency with a provider shim.
+# Prefer the Qt-ABI-matched quickshell-git rebuild; fall back to ALARM's
+# packaged quickshell (upstream's 4.0.2 base-list name).
+if pkg_available quickshell-git; then
+  qs_pkg=quickshell-git
+elif pkg_available quickshell; then
+  qs_pkg=quickshell
+else
+  qs_pkg=quickshell-git
+fi
+omarchy_core=("$qs_pkg" omarchy-keyring omarchy-settings omarchy-nvim omarchy)
 core_missing=0
 for p in "${omarchy_core[@]}"; do
   pkg_available "$p" || { note "  MISSING CORE: $p"; core_missing=1; }
@@ -271,8 +282,8 @@ if (( core_missing == 0 )); then
   # quickshell consumes Qt private API.  A stale AUR build can satisfy pacman
   # dependencies yet crash before main() after Qt receives a patch update.
   # Fail the image build here instead of shipping a black desktop.
-  if pkg_available quickshell-git && ! in_chroot quickshell --version >/dev/null; then
-    echo "quickshell cannot resolve the installed Qt ABI; rebuild quickshell-git" >&2
+  if ! in_chroot quickshell --version >/dev/null; then
+    echo "quickshell cannot resolve the installed Qt ABI; rebuild $qs_pkg" >&2
     exit 1
   fi
 else

@@ -66,8 +66,10 @@ grep -Fq 'output = "DSI-1"' overlay/thor/thor-monitors.lua ||
   fail "bottom DSI is missing"
 pass "dual-panel layout"
 
-grep -Fq 'quickshell-git omarchy-keyring' build/mkimage.sh ||
-  fail "Quickshell is not a required Omarchy core package"
+grep -Fq 'quickshell-git' build/mkimage.sh ||
+  fail "Quickshell-git rebuild is not preferred for Omarchy core"
+grep -Fq 'quickshell=quickshell-git' build/mkimage.sh ||
+  fail "base-list quickshell is not substituted with the Qt-matched rebuild"
 grep -Fq 'Thor OSK binary' build/verify-image.sh ||
   fail "image verifier does not require the OSK"
 grep -Fq 'Thor DSI recovery enabled' build/verify-image.sh ||
@@ -90,6 +92,8 @@ grep -Fq 'arch-chroot /mnt/omarchy-wvkbd' .github/workflows/build-image-thor.yml
   fail "Omarchy any-package builder is hard-coded to Arch's zstd PKGEXT"
 grep -Fq "test -x \"\$mnt/usr/bin/wvkbd-mobintl\"" build/verify-image.sh ||
   fail "image verifier does not require the packaged keyboard binary"
+grep -Fq 'mise-bin' pkgs/repack-bin.sh ||
+  fail "mise-bin is not repacked for aarch64 after upstream 4.0.2"
 pass "desktop and recovery invariants"
 
 # Debug credentials are opt-in inputs. Nothing secret may be staged by the

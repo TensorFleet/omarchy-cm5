@@ -17,7 +17,9 @@ mkdir -p "$OUT"
 # omarchy-chromium-bin: omacom publishes real aarch64 chromium builds.
 # aether: upstream releases ship linux-arm64.
 # localsend-bin: upstream releases ship linux-arm-64 debs.
-PACKAGES=(omarchy-chromium-bin aether localsend-bin)
+# mise-bin: jdx publishes linux-arm64; omarchy-pkgs PKGBUILD already declares
+# aarch64 (upstream 4.0.2 switched the base list from mise → mise-bin).
+PACKAGES=(omarchy-chromium-bin aether localsend-bin mise-bin)
 
 pacman -Syu --noconfirm --needed base-devel git sudo >/dev/null
 useradd -m builder 2>/dev/null || true
