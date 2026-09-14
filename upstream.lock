@@ -4,5 +4,5 @@
 # omarchy-settings packages the image builder builds MUST match this ref.
 OMARCHY_REPO=https://github.com/basecamp/omarchy
 OMARCHY_BRANCH=quattro
-OMARCHY_REF=346e69e1cec6c4e8924531874af6ba010a1bc99e
+OMARCHY_REF=b679363bed05415771a1b1dc92c6899a908236f7
 OMARCHY_VERSION=4.0.2
