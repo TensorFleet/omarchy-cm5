@@ -2,7 +2,7 @@
 
 # 16K-page Pi kernel from Arch Linux ARM. If a binary misbehaves on 16K
 # pages, switch to the 4K build: kernel=kernel8.img via linux-rpi.
-kernel=kernel_2712.img
+kernel=kernel8.img
 arm_64bit=1
 
 # Full KMS — required for Hyprland/wlroots-style compositors on v3d.
@@ -17,6 +17,26 @@ disable_overscan=1
 dtparam=pciex1
 dtparam=pciex1_gen=3
 
+initramfs initramfs-linux.img followkernel
+
 # --- carrier-specific (TensorFleet) -----------------------------------------
 # TODO: LVDS/DSI panel overlay + timings for vaio_cm5_carrier / koyomi-lvds-hat
 # dtoverlay=...
+
+# --- Hackberry Pi CM5 carrier (ZitaoTech) — validated 2026-09-13/14 --------
+# Together with overlay/install/hardware/hackberry-cm5.sh this brings up:
+# panel, battery gauge, onboard BT speakers, and the standalone Q20 keyboard.
+dtoverlay=hackberrypicm5
+dtparam=audio=on
+dtoverlay=vc4-kms-dsi-pibrick
+
+# Q20 standalone keyboard: the QMK/VIAL RP2040 controller (USB 4041:0001,
+# "ZitaoTech HACKBerryPiQ20") is wired to the CM5 SoC's internal DWC2 USB2
+# controller at /axi/usb@480000, which is disabled by default in the base DT.
+# This mirrors the known-good old-image [cm5] section. dwc2 is built into
+# the omega kernel (6.18.x-rpi-16k). The Q20 then appears as a normal USB HID
+# keyboard + mouse (nub = BTN_LEFT; button-4 hold is BTN_RIGHT via QMK
+# tap-dance; button-2 = Super; button-3 tap = Esc). No userspace remap helper
+# is required.
+[cm5]
+dtoverlay=dwc2,dr_mode=host
