@@ -25,3 +25,12 @@ echo balanced > /etc/omarchy-cm5/power-profile
 # TODO(carrier): LVDS/DSI panel dtoverlay + timings for the TensorFleet
 # carrier boards (vaio_cm5_carrier, koyomi-lvds-hat) — belongs in
 # overlay/boot/config.txt once panel bring-up settles.
+
+# ZitaoTech Hackberry Pi CM5 carrier: panel, battery gauge, BT speakers,
+# Q20 standalone keyboard. Only runs when the Hackberry overlay is present
+# on the boot media (sensor: /boot/overlays/hackberrypicm5.dtbo).
+if [[ -f /boot/overlays/hackberrypicm5.dtbo ]]; then
+  #Overlay/install/hardware/hackberry-cm5.sh validated 2026-09-13/14.
+  # shellcheck disable=SC1091
+  source "$(dirname "${BASH_SOURCE[0]}")/hackberry-cm5.sh"
+fi
