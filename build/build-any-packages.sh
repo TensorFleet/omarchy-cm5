@@ -12,7 +12,8 @@
 # Builds:
 #   1. omarchy-keyring, omarchy-settings, omarchy, omarchy-nvim  (the runtime)
 #   2. base-list arch=('any') packages ALARM doesn't carry
-#      (fonts, ufw-docker, yaru-icon-theme, …); tzupdate is Rust now and
+#      (fonts, ufw-docker, yaru-icon-theme, tobi-try, elsewhen, …);
+#      tzupdate is Rust now and
 #      builds in the aarch64 chroot instead (pkgs/build-in-chroot.sh)
 #   3. omarchy-cm5-shims: an empty provider for runtime dependencies that
 #      don't exist on aarch64 and don't apply to Pi-firmware boot (limine and
@@ -73,7 +74,8 @@ build_one omarchy "$pin_ref"
 build_one omarchy-nvim
 
 # 2. arch=('any') base-list packages ALARM doesn't carry.
-for pkg in ttf-ia-writer ttf-jetbrains-mono-nerd-basic ufw-docker yaru-icon-theme tobi-try xdg-terminal-exec; do
+# elsewhen: quattro default world-clock plugin (omarchy-pkgs, QML/JS, arch=any).
+for pkg in ttf-ia-writer ttf-jetbrains-mono-nerd-basic ufw-docker yaru-icon-theme tobi-try xdg-terminal-exec elsewhen; do
   if alarm_has "$pkg"; then
     echo "skip $pkg (ALARM has it)" >&2
   else
