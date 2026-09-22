@@ -59,7 +59,7 @@ jobs:
       - name: Build Go/Rust/Qt tools in ALARM chroot
         run: |
           sudo CHROOT=/mnt/omarchy-pkgbuild OUT="$PWD/build/pkgs-out" \
-            bash pkgs/build-in-chroot.sh wvkbd cliamp herdr ttfx omacalc omacut omawrite tzupdate yay
+            bash pkgs/build-in-chroot.sh wvkbd cliamp herdr ttfx omacalc omacut omawrite tzupdate yay omasnap owe owe-lockfeed
           test -n "$(find build/pkgs-out -maxdepth 1 -name 'wvkbd-*.pkg.tar.*' -print -quit)"
           sudo chown -R "$(id -u):$(id -g)" build/pkgs-out
       - name: Publish to aarch64-pkgs release

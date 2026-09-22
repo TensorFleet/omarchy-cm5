@@ -94,6 +94,10 @@ grep -Fq "test -x \"\$mnt/usr/bin/wvkbd-mobintl\"" build/verify-image.sh ||
   fail "image verifier does not require the packaged keyboard binary"
 grep -Fq 'mise-bin' pkgs/repack-bin.sh ||
   fail "mise-bin is not repacked for aarch64 after upstream 4.0.2"
+grep -Fq 'elsewhen' build/build-any-packages.sh ||
+  fail "elsewhen is not built as an arch=any package after quattro default-plugin"
+grep -Fq 'omasnap owe owe-lockfeed' .github/workflows/build-arm-packages.yml ||
+  fail "omasnap/owe/owe-lockfeed are not built as compiled aarch64 packages"
 pass "desktop and recovery invariants"
 
 # Debug credentials are opt-in inputs. Nothing secret may be staged by the
