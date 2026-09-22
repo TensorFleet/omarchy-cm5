@@ -4,7 +4,7 @@
 # resolves each PKGBUILD's makedepends against real ALARM packages.
 #
 #   sudo pkgs/build-in-chroot.sh quickshell-git
-#   sudo pkgs/build-in-chroot.sh cliamp herdr ttfx omacalc omacut omawrite
+#   sudo pkgs/build-in-chroot.sh cliamp herdr ttfx omacalc omacut omawrite omasnap owe owe-lockfeed
 #
 # Package sources are resolved from this repository's aarch64-extra directory
 # first, then from omarchy-pkgs. Output: build/pkgs-out/*.pkg.tar.*.

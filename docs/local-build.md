@@ -137,7 +137,7 @@ docker run --rm -v "$PWD:/work" archlinux/archlinux:latest \
 
 ```bash
 sudo pkgs/build-in-chroot.sh quickshell-git                       # the big one
-sudo pkgs/build-in-chroot.sh cliamp herdr ttfx omacalc omacut omawrite tzupdate yay
+sudo pkgs/build-in-chroot.sh cliamp herdr ttfx omacalc omacut omawrite tzupdate yay omasnap owe owe-lockfeed
 ```
 
 Bootstraps a throwaway Arch Linux ARM chroot (`CHROOT=/mnt/omarchy-pkgbuild`
